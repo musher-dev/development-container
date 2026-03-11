@@ -11,26 +11,45 @@
     // --- Core ---
     "ghcr.io/devcontainers/features/common-utils:2": {
       "installZsh": true,
+      "configureZshAsDefaultShell": true,
       "installOhMyZsh": true,
+      "installOhMyZshConfig": true,
       "upgradePackages": true
     },
     "ghcr.io/devcontainers/features/git:1": {},
     "ghcr.io/devcontainers/features/github-cli:1": {},
 
     // --- Runtimes ---
-    "ghcr.io/devcontainers/features/node:1": {},
-    "ghcr.io/devcontainers/features/python:1": {},
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "lts"
+    },
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.13"
+    },
     "ghcr.io/devcontainers/features/go:1": {},
 
     // --- Docker ---
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
 
-    // --- Optional runtimes (uncomment as needed) ---
-    // "ghcr.io/astral-sh/uv:1": {},
-    // "ghcr.io/nicknisi/features/bun:1": {},
+    // --- Package managers ---
+    "ghcr.io/devcontainers-extra/features/bun:1": {},
+    "ghcr.io/devcontainers-extra/features/uv:1": {},
 
-    // --- Optional tools (uncomment as needed) ---
-    // "ghcr.io/devcontainers/features/shellcheck:1": {}
+    // --- Additional runtimes ---
+    "ghcr.io/devcontainers-extra/features/deno:1": {},
+    "ghcr.io/devcontainers/features/java:1": {
+      "version": "17",
+      "installGradle": false,
+      "installMaven": false
+    },
+
+    // --- Database tooling ---
+    "ghcr.io/robbert229/devcontainer-features/postgresql-client:1": {
+      "version": "16"
+    },
+
+    // --- AI tooling ---
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1": {}
   },
 
   "containerUser": "vscode",
@@ -72,7 +91,7 @@
   // },
   "forwardPorts": [15432],
   "portsAttributes": {
-    "15432": { "label": "PostgreSQL (example)", "onAutoForward": "silent" }
+    "15432": { "label": "PostgreSQL", "onAutoForward": "silent" }
   },
 
   "customizations": {
@@ -95,9 +114,9 @@
         // --- Docker ---
         "ms-azuretools.vscode-docker",
 
-        // --- Optional (uncomment as needed) ---
-        // "esbenp.prettier-vscode",
-        // "bierner.markdown-mermaid"
+        // --- Formatters & visual tooling ---
+        "esbenp.prettier-vscode",
+        "bierner.markdown-mermaid"
       ],
       "settings": {
         // --- Editor ---
@@ -125,16 +144,16 @@
           }
         },
 
-        // --- Optional: Prettier formatter overrides (uncomment with prettier extension) ---
-        // "[javascript]": {
-        //   "editor.defaultFormatter": "esbenp.prettier-vscode"
-        // },
-        // "[typescript]": {
-        //   "editor.defaultFormatter": "esbenp.prettier-vscode"
-        // },
-        // "[json]": {
-        //   "editor.defaultFormatter": "esbenp.prettier-vscode"
-        // }
+        // --- Prettier formatter overrides ---
+        "[javascript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[typescript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[json]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        }
       }
     }
   }
