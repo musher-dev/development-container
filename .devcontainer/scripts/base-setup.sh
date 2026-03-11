@@ -43,23 +43,6 @@ base_fix_nvm_permissions() {
   fix_nvm_permissions
 }
 
-# --- Task runner ---
-
-# Installs the Task runner if not already present.
-#
-# Outputs:
-#   Writes progress to stderr via log()
-# Returns:
-#   0 on success, non-zero on failure
-base_install_task() {
-  if has_cmd task; then
-    log "Task already installed, skipping"
-    return 0
-  fi
-  log "Installing Task runner..."
-  retry 3 5 bash -c 'curl -fsSL https://taskfile.dev/install.sh | sh -s -- -d -b /usr/local/bin'
-}
-
 # --- Codex CLI ---
 
 # Installs the Codex CLI if not already present.
@@ -98,7 +81,6 @@ base_setup() {
   log "Running base setup..."
   base_setup_config_dirs
   base_fix_nvm_permissions
-  base_install_task
   base_install_codex
   base_verify_tools
   log "Base setup complete"
