@@ -12,6 +12,8 @@ readonly COMPOSE_FILE="$(cd "${SCRIPT_DIR}/.." && pwd)/compose.yaml"
 
 # shellcheck source=lib/common.sh
 source "${SCRIPT_DIR}/lib/common.sh"
+# shellcheck source=lib/motd.sh
+source "${SCRIPT_DIR}/lib/motd.sh"
 
 # Logs the failing command and line number on ERR.
 #
@@ -83,11 +85,13 @@ wait_for_healthy() {
 main() {
   if ! has_cmd docker; then
     log "Docker not available, skipping service startup"
+    show_motd ""
     return 0
   fi
 
   if [[ ! -f "${COMPOSE_FILE}" ]]; then
     log "No compose.yaml found, skipping service startup"
+    show_motd ""
     return 0
   fi
 
@@ -96,8 +100,7 @@ main() {
 
   wait_for_healthy 60
 
-  log "Running services:"
-  docker compose -f "${COMPOSE_FILE}" ps
+  show_motd "${COMPOSE_FILE}"
 }
 
 main "$@"

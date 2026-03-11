@@ -32,6 +32,18 @@ has_cmd() {
   command -v "$1" &>/dev/null
 }
 
+# Runs a command with sudo if available, otherwise without.
+#
+# Arguments:
+#   $@ — command and arguments
+maybe_sudo() {
+  if sudo -n true 2>/dev/null; then
+    sudo "$@"
+  else
+    "$@"
+  fi
+}
+
 # Retries a command with exponential back-off.
 #
 # Arguments:
@@ -70,9 +82,9 @@ ensure_writable_dir() {
   local dir="${1:?usage: ensure_writable_dir <path>}"
   local owner="${2:-vscode}"
   if [[ ! -d "$dir" ]]; then
-    sudo mkdir -p "$dir"
+    maybe_sudo mkdir -p "$dir"
   fi
-  sudo chown -R "${owner}:${owner}" "$dir"
+  maybe_sudo chown -R "${owner}:${owner}" "$dir"
 }
 
 # Creates config directories from "label:path" pairs.
@@ -105,7 +117,7 @@ fix_nvm_permissions() {
   local nvm_dir="${NVM_DIR:-/usr/local/share/nvm}"
   if [[ -d "$nvm_dir" ]]; then
     log "Fixing NVM permissions in ${nvm_dir}..."
-    sudo chown -R "$(id -un):$(id -gn)" "$nvm_dir"
+    maybe_sudo chown -R "$(id -un):$(id -gn)" "$nvm_dir"
   fi
 }
 

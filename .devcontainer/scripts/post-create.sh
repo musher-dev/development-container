@@ -61,10 +61,10 @@ setup_shell_customization() {
     cat >> "$zshrc" <<EOF
 
 $marker
-for f in ${shell_dir}/*.shared.sh; do
+for f in ${shell_dir}/*.shared.sh(N); do
   [ -f "\$f" ] && source "\$f"
 done
-for f in ${shell_dir}/*.local.sh; do
+for f in ${shell_dir}/*.local.sh(N); do
   [ -f "\$f" ] && source "\$f"
 done
 EOF

@@ -70,8 +70,6 @@
   "init": true,
   "shutdownAction": "stopContainer",
 
-  // Prevent privilege escalation inside the container.
-  "securityOpt": ["no-new-privileges"],
   // Allow debuggers (gdb, strace, delve) to attach to processes.
   "capAdd": ["SYS_PTRACE"],
 
