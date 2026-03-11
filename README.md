@@ -24,7 +24,7 @@ Open in VS Code → **Reopen in Container**. Out of the box you get:
 
 ```
 post-create.sh          ← Entry point (repo-specific customization here)
-  └── base-setup.sh     ← Reusable orchestrator (AI CLIs, Task, NVM, config dirs)
+  └── base-setup.sh     ← Reusable orchestrator (Codex CLI, Task, NVM, config dirs)
         └── common.sh   ← Shared utilities (log, retry, has_cmd, ensure_writable_dir)
 ```
 
@@ -60,15 +60,15 @@ Services run inside Docker-in-Docker via a `compose/` folder and `startup.sh`. T
 
 ```
 .devcontainer/
-  docker-compose.yml    ← Orchestrator (includes compose/*.yml)
+  compose.yaml    ← Orchestrator (includes compose/*.yaml)
   .env.example          ← Environment template (credentials, profiles)
   compose/
-    postgres.yml        ← PostgreSQL with pgvector
-    redis.yml           ← Redis (profile-gated)
-    minio.yml           ← MinIO S3 storage (profile-gated)
-    registry.yml        ← OCI Registry (profile-gated)
-    azimutt.yml         ← DB explorer UI (profile-gated)
-    observability.yml   ← Grafana/Tempo/Loki/OTel stack (profile-gated)
+    postgres.yaml        ← PostgreSQL with pgvector
+    redis.yaml           ← Redis (profile-gated)
+    minio.yaml           ← MinIO S3 storage (profile-gated)
+    registry.yaml        ← OCI Registry (profile-gated)
+    azimutt.yaml         ← DB explorer UI (profile-gated)
+    observability.yaml   ← Grafana/Tempo/Loki/OTel stack (profile-gated)
   config/
     postgres/           ← SQL init scripts mounted into PostgreSQL
     observability/      ← OTel, Grafana, Tempo, Loki config
@@ -80,14 +80,14 @@ Services run inside Docker-in-Docker via a `compose/` folder and `startup.sh`. T
 
 **Lifecycle:** `post-create.sh` runs once when the container is created (tool installs, permissions). `startup.sh` runs on every container start via `postStartCommand` (brings up compose services, waits for health checks).
 
-**Adding a service:** Create a new file in `compose/`, add it to `docker-compose.yml`'s `include:` list, and optionally gate it with a profile. Add port forwarding in `devcontainer.json` as needed.
+**Adding a service:** Create a new file in `compose/`, add it to `compose.yaml`'s `include:` list, and optionally gate it with a profile. Add port forwarding in `devcontainer.json` as needed. Access running containers with `docker compose exec <service>`.
 
 ### Adding volumes
 
-Follow the naming convention `musher-${localWorkspaceFolderBasename}-<purpose>`:
+Follow the naming convention `musher-${devcontainerId}-<purpose>`:
 
 ```jsonc
-"source=musher-${localWorkspaceFolderBasename}-my-tool,target=/home/vscode/.my-tool,type=volume"
+"source=musher-${devcontainerId}-my-tool,target=/home/vscode/.my-tool,type=volume"
 ```
 
 ### Adding repo-specific setup
@@ -118,7 +118,6 @@ main() {
   base_setup_config_dirs
   base_fix_nvm_permissions
   base_install_task
-  base_install_claude
   # Skip codex: base_install_codex
   base_verify_tools
   log "Post-create setup completed"

@@ -54,20 +54,17 @@
 
   "containerUser": "vscode",
   "remoteUser": "vscode",
-  "updateRemoteUserUID": true,
-  "userEnvProbe": "loginInteractiveShell",
 
   "init": true,
-  "overrideCommand": true,
   "shutdownAction": "stopContainer",
 
   "securityOpt": ["no-new-privileges"],
   "capAdd": ["SYS_PTRACE"],
 
   "mounts": [
-    "source=musher-${localWorkspaceFolderBasename}-gh-config,target=/home/vscode/.config/gh,type=volume",
-    "source=musher-${localWorkspaceFolderBasename}-claude-config,target=/home/vscode/.claude,type=volume",
-    "source=musher-${localWorkspaceFolderBasename}-codex-config,target=/home/vscode/.codex,type=volume"
+    "source=musher-${devcontainerId}-gh-config,target=/home/vscode/.config/gh,type=volume",
+    "source=musher-${devcontainerId}-claude-config,target=/home/vscode/.claude,type=volume",
+    "source=musher-${devcontainerId}-codex-config,target=/home/vscode/.codex,type=volume"
   ],
 
   "containerEnv": {
@@ -80,8 +77,11 @@
   },
 
   "waitFor": "postCreateCommand",
-  "postCreateCommand": "find .devcontainer/scripts -type f -name '*.sh' -exec sed -i 's/\\r$//' {} + && chmod +x .devcontainer/scripts/*.sh && .devcontainer/scripts/post-create.sh",
-  "postStartCommand": "bash .devcontainer/scripts/startup.sh",
+  "postCreateCommand": {
+    "fix-crlf": "find .devcontainer/scripts -type f -name '*.sh' -exec sed -i 's/\\r$//' {} +",
+    "setup": ["bash", ".devcontainer/scripts/post-create.sh"]
+  },
+  "postStartCommand": ["bash", ".devcontainer/scripts/startup.sh"],
 
   "forwardPorts": [15432, 15433, 15434, 15435, 15436, 15440, 15441, 15442, 15443, 15444, 15445, 15446, 15447, 15448, 15460],
   "portsAttributes": {
@@ -105,12 +105,11 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        // --- Core ---
-        "eamodio.gitlens",
+        // --- Core tooling ---
         "redhat.vscode-yaml",
         "tamasfe.even-better-toml",
-        "github.copilot",
-        "github.copilot-chat",
+        "ms-azuretools.vscode-docker",
+        "esbenp.prettier-vscode",
 
         // --- Language support ---
         "golang.go",
@@ -119,11 +118,10 @@
         "charliermarsh.ruff",
         "dbaeumer.vscode-eslint",
 
-        // --- Docker ---
-        "ms-azuretools.vscode-docker",
-
-        // --- Formatters & visual tooling ---
-        "esbenp.prettier-vscode",
+        // --- Optional (comment out if not needed) ---
+        "eamodio.gitlens",
+        "github.copilot",
+        "github.copilot-chat",
         "bierner.markdown-mermaid"
       ],
       "settings": {

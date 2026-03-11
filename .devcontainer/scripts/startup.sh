@@ -2,13 +2,13 @@
 # startup.sh — Starts compose services and waits for health checks.
 #
 # Executed on every container start to bring up supporting services
-# (databases, caches, observability) defined in docker-compose.yml.
+# (databases, caches, observability) defined in compose.yaml.
 #
 # Usage: Called automatically by devcontainer.json postStartCommand.
 set -euo pipefail
 
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly COMPOSE_FILE="$(cd "${SCRIPT_DIR}/.." && pwd)/docker-compose.yml"
+readonly COMPOSE_FILE="$(cd "${SCRIPT_DIR}/.." && pwd)/compose.yaml"
 
 # shellcheck source=common.sh
 source "${SCRIPT_DIR}/common.sh"
@@ -32,7 +32,7 @@ trap 'on_error ${LINENO} "${BASH_COMMAND}"' ERR
 # Arguments:
 #   $1 — timeout in seconds (default: 60)
 # Globals:
-#   COMPOSE_FILE — read, path to docker-compose.yml
+#   COMPOSE_FILE — read, path to compose.yaml
 # Outputs:
 #   Writes progress/warnings to stderr via log()
 # Returns:
@@ -42,17 +42,11 @@ wait_for_healthy() {
   log "Waiting up to ${timeout}s for services to be healthy..."
   local elapsed=0
   while ((elapsed < timeout)); do
-    if docker compose -f "${COMPOSE_FILE}" ps --status running 2>/dev/null \
-        | grep -q "healthy"; then
-      log "All services healthy"
-      return 0
-    fi
-    # Check if any services are still starting (not yet healthy or unhealthy)
     local starting
     starting="$(docker compose -f "${COMPOSE_FILE}" ps --format json 2>/dev/null \
       | grep -c '"starting"' || true)"
     if [[ "$starting" -eq 0 ]] && ((elapsed > 5)); then
-      log "All services settled"
+      log "All services healthy"
       return 0
     fi
     sleep 3
@@ -73,7 +67,7 @@ main() {
   fi
 
   if [[ ! -f "${COMPOSE_FILE}" ]]; then
-    log "No docker-compose.yml found, skipping service startup"
+    log "No compose.yaml found, skipping service startup"
     return 0
   fi
 

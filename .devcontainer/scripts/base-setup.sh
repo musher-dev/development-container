@@ -32,7 +32,8 @@ source "${SCRIPT_DIR}/common.sh"
 base_setup_config_dirs() {
   setup_config_dirs \
     "gh config:${_HOME}/.config/gh" \
-    "claude:${_HOME}/.claude"
+    "claude:${_HOME}/.claude" \
+    "codex:${_HOME}/.codex"
 }
 
 # --- NVM ---
@@ -57,23 +58,6 @@ base_install_task() {
   fi
   log "Installing Task runner..."
   retry 3 5 bash -c 'curl -fsSL https://taskfile.dev/install.sh | sh -s -- -d -b /usr/local/bin'
-}
-
-# --- Claude CLI ---
-
-# Installs the Claude CLI if not already present.
-#
-# Outputs:
-#   Writes progress to stderr via log()
-# Returns:
-#   0 on success, non-zero on failure
-base_install_claude() {
-  if has_cmd claude; then
-    log "Claude CLI already installed, skipping"
-    return 0
-  fi
-  log "Installing Claude CLI..."
-  retry 3 5 bash -c 'curl -fsSL https://claude.ai/install.sh | bash'
 }
 
 # --- Codex CLI ---
@@ -115,7 +99,6 @@ base_setup() {
   base_setup_config_dirs
   base_fix_nvm_permissions
   base_install_task
-  base_install_claude
   base_install_codex
   base_verify_tools
   log "Base setup complete"

@@ -4,7 +4,6 @@ services:
   minio:
     profiles: [minio]
     image: minio/minio:latest
-    container_name: musher-minio
     restart: unless-stopped
     ports:
       - "127.0.0.1:15434:9000"

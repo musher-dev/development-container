@@ -4,7 +4,6 @@
 services:
   azimutt:
     image: ghcr.io/azimuttapp/azimutt:main
-    container_name: musher-azimutt
     platform: linux/amd64
     restart: unless-stopped
     profiles: [azimutt]

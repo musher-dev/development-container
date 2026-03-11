@@ -4,7 +4,6 @@
 services:
   minio-observability:
     image: minio/minio:latest
-    container_name: musher-minio-observability
     profiles: [observability]
     restart: unless-stopped
     ports:
@@ -25,7 +24,6 @@ services:
 
   minio-observability-init:
     image: minio/mc:latest
-    container_name: musher-minio-observability-init
     profiles: [observability]
     depends_on:
       minio-observability:
@@ -40,7 +38,6 @@ services:
 
   tempo:
     image: grafana/tempo:latest
-    container_name: musher-tempo
     profiles: [observability]
     restart: unless-stopped
     ports:
@@ -61,7 +58,6 @@ services:
 
   loki:
     image: grafana/loki:latest
-    container_name: musher-loki
     profiles: [observability]
     restart: unless-stopped
     ports:
@@ -82,7 +78,6 @@ services:
 
   victoriametrics:
     image: victoriametrics/victoria-metrics:latest
-    container_name: musher-victoriametrics
     profiles: [observability]
     restart: unless-stopped
     ports:
@@ -98,7 +93,6 @@ services:
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
-    container_name: musher-otel-collector
     profiles: [observability]
     restart: unless-stopped
     ports:
@@ -117,7 +111,6 @@ services:
 
   grafana:
     image: grafana/grafana:latest
-    container_name: musher-grafana
     profiles: [observability]
     restart: unless-stopped
     ports:
@@ -140,7 +133,6 @@ services:
 
   pyroscope:
     image: grafana/pyroscope:latest
-    container_name: musher-pyroscope
     profiles: [observability]
     restart: unless-stopped
     ports:

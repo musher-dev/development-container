@@ -5,7 +5,7 @@
 # Example: cp aliases.sh.example aliases.sh
 
 # --- Docker Compose shortcuts ---
-alias dc="docker compose -f /workspaces/\${PWD##*/}/.devcontainer/docker-compose.yml"
+alias dc="docker compose -f /workspaces/\${PWD##*/}/.devcontainer/compose.yaml"
 alias dcu="dc up -d"
 alias dcd="dc down"
 alias dcl="dc logs -f"

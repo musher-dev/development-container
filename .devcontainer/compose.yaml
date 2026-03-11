@@ -14,12 +14,12 @@
 #                             15448  Pyroscope
 
 include:
-  - compose/postgres.yml
-  - compose/redis.yml
-  - compose/minio.yml
-  - compose/registry.yml
-  - compose/azimutt.yml
-  - compose/observability.yml
+  - compose/postgres.yaml
+  - compose/redis.yaml
+  - compose/minio.yaml
+  - compose/registry.yaml
+  - compose/azimutt.yaml
+  - compose/observability.yaml
 
 networks:
   default:

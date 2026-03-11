@@ -4,7 +4,6 @@ services:
   registry:
     profiles: [registry]
     image: registry:2
-    container_name: musher-registry
     restart: unless-stopped
     ports:
       - "127.0.0.1:15436:5000"

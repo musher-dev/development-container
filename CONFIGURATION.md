@@ -14,7 +14,7 @@ CLI tool installed via curl/npm?
   → scripts/base-setup.sh (add a function, call from post-create.sh)
 
 Infrastructure service (DB, cache, queue, storage)?
-  → compose/*.yml (new file, add to docker-compose.yml includes)
+  → compose/*.yaml (new file, add to compose.yaml includes)
 
 VS Code editor behavior or extension?
   → devcontainer.json → customizations.vscode block
@@ -41,7 +41,7 @@ Runs on every container start?
 |---|---|---|
 | **Runtimes & Tools** | Language runtimes (Node, Python, Go, Java, Deno) | `devcontainer.json` → `features` |
 | | Package managers (bun, uv) | `devcontainer.json` → `features` |
-| | CLI tools (Task, Claude, Codex) | `scripts/base-setup.sh` |
+| | CLI tools (Task, Codex) | `scripts/base-setup.sh` |
 | **Editor** | VS Code settings (formatters, rulers, whitespace) | `devcontainer.json` → `customizations.vscode.settings` |
 | | VS Code extensions | `devcontainer.json` → `customizations.vscode.extensions` |
 | | Debug launch configs | `.vscode/launch.json` (in consuming project) |
@@ -54,10 +54,10 @@ Runs on every container start?
 | | Service credentials (dev-only) | `.devcontainer/.env` |
 | | Service profiles/toggles | `.devcontainer/.env` → `COMPOSE_PROFILES` |
 | | Secrets (API keys, tokens) | Host env forwarded via `remoteEnv` — never committed |
-| **Services** | Infrastructure services | `.devcontainer/compose/*.yml` |
+| **Services** | Infrastructure services | `.devcontainer/compose/*.yaml` |
 | | Service enable/disable | `.devcontainer/.env` → `COMPOSE_PROFILES` |
 | | Service tuning/config | `.devcontainer/config/<service>/` |
-| **Networking** | Port allocation (container-side) | `.devcontainer/compose/*.yml` → `ports:` |
+| **Networking** | Port allocation (container-side) | `.devcontainer/compose/*.yaml` → `ports:` |
 | | Port forwarding (to host IDE) | `devcontainer.json` → `forwardPorts` + `portsAttributes` |
 | | Service discovery | Automatic via Docker Compose `musher-dev` network |
 | **Observability** | Telemetry pipeline config | `.devcontainer/config/observability/otel-collector-config.yaml` |
@@ -70,7 +70,7 @@ Runs on every container start?
 | **Lifecycle** | One-time container setup | `scripts/post-create.sh` → `base-setup.sh` |
 | | Every-start tasks | `scripts/startup.sh` |
 | | Task automation | `Taskfile.yml` (in consuming project) |
-| **AI Tools** | AI CLI installation | `devcontainer.json` feature + `base-setup.sh` |
+| **AI Tools** | AI CLI installation | `devcontainer.json` feature (Claude) + `base-setup.sh` (Codex) |
 | | AI CLI config persistence | `devcontainer.json` → `mounts` (named volumes) |
 | **Security** | Container capabilities | `devcontainer.json` → `capAdd` / `securityOpt` |
 | | Network binding | Compose files → all ports bound to `127.0.0.1` |
@@ -151,7 +151,7 @@ There are four distinct scopes for environment variables. Use the right one:
 | **Container-wide** | `devcontainer.json` → `containerEnv` | Runtime behavior (`PYTHONUNBUFFERED`, `UV_LINK_MODE`) |
 | **Remote/IDE** | `devcontainer.json` → `remoteEnv` | PATH extensions, forwarded host secrets |
 | **Compose services** | `.devcontainer/.env` | Service credentials, `COMPOSE_PROFILES` |
-| **Service-specific** | `compose/*.yml` → `environment:` | Internal service config (uses `${VAR:-default}` interpolation) |
+| **Service-specific** | `compose/*.yaml` → `environment:` | Internal service config (uses `${VAR:-default}` interpolation) |
 
 ### Secrets
 
@@ -173,7 +173,7 @@ Dev-only credentials live in `.devcontainer/.env` (gitignored). Copy from `.env.
 
 ### Enabling/Disabling Services
 
-All services are included in `docker-compose.yml`. Optional services are gated by Compose profiles:
+All services are included in `compose.yaml`. Optional services are gated by Compose profiles:
 
 | Service | Profile | Always On? |
 |---|---|---|
@@ -192,8 +192,8 @@ COMPOSE_PROFILES=redis,minio,observability
 
 ### Adding a New Service
 
-1. Create `compose/myservice.yml`
-2. Add `- compose/myservice.yml` to `docker-compose.yml` `include:`
+1. Create `compose/myservice.yaml`
+2. Add `- compose/myservice.yaml` to `compose.yaml` `include:`
 3. Optionally add `profiles: [myservice]` if it should be opt-in
 4. Add port forwarding in `devcontainer.json` → `forwardPorts` and `portsAttributes`
 5. Use `${VAR:-default}` for any credentials, and add them to `.env.example`
@@ -303,7 +303,7 @@ post-create.sh          ← Entry point (repo-specific customization)
 
 ### Installed CLIs
 
-- **Claude CLI** — Installed via `base-setup.sh`, config persisted in `~/.claude` volume
+- **Claude CLI** — Installed via the `claude-code` devcontainer Feature, config persisted in `~/.claude` volume
 - **Codex CLI** — Installed via npm in `base-setup.sh`, config persisted in `~/.codex` volume
 
 ### Configuration Persistence
@@ -317,16 +317,16 @@ AI CLI configs are stored in named volumes mounted via `devcontainer.json` → `
 ```
 .devcontainer/
   devcontainer.json           Runtimes, extensions, settings, mounts, ports
-  docker-compose.yml          Service orchestrator (includes compose/*.yml)
+  compose.yaml          Service orchestrator (includes compose/*.yaml)
   .env.example                Environment template (copy to .env)
   .env                        Local overrides (gitignored)
   compose/
-    postgres.yml              PostgreSQL with pgvector (always on)
-    redis.yml                 Redis (profile: redis)
-    minio.yml                 MinIO S3 storage (profile: minio)
-    registry.yml              OCI Registry (profile: registry)
-    azimutt.yml               DB explorer UI (profile: azimutt)
-    observability.yml         Full observability stack (profile: observability)
+    postgres.yaml              PostgreSQL with pgvector (always on)
+    redis.yaml                 Redis (profile: redis)
+    minio.yaml                 MinIO S3 storage (profile: minio)
+    registry.yaml              OCI Registry (profile: registry)
+    azimutt.yaml               DB explorer UI (profile: azimutt)
+    observability.yaml         Full observability stack (profile: observability)
   config/
     postgres/
       00-init.sql             Base DB schema
