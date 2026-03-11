@@ -1,0 +1,141 @@
+// Musher Dev Container — Batteries-included template.
+// Uncomment optional blocks as needed. Comment out what you don't use.
+{
+  "name": "Musher Dev",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind,consistency=cached",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+
+  "features": {
+    // --- Core ---
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "installOhMyZsh": true,
+      "upgradePackages": true
+    },
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+
+    // --- Runtimes ---
+    "ghcr.io/devcontainers/features/node:1": {},
+    "ghcr.io/devcontainers/features/python:1": {},
+    "ghcr.io/devcontainers/features/go:1": {},
+
+    // --- Docker ---
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+
+    // --- Optional runtimes (uncomment as needed) ---
+    // "ghcr.io/astral-sh/uv:1": {},
+    // "ghcr.io/nicknisi/features/bun:1": {},
+
+    // --- Optional tools (uncomment as needed) ---
+    // "ghcr.io/devcontainers/features/shellcheck:1": {}
+  },
+
+  "containerUser": "vscode",
+  "remoteUser": "vscode",
+  "updateRemoteUserUID": true,
+  "userEnvProbe": "loginInteractiveShell",
+
+  "init": true,
+  "overrideCommand": true,
+  "shutdownAction": "stopContainer",
+
+  "securityOpt": ["no-new-privileges"],
+  "capAdd": ["SYS_PTRACE"],
+
+  "mounts": [
+    "source=musher-${localWorkspaceFolderBasename}-gh-config,target=/home/vscode/.config/gh,type=volume",
+    "source=musher-${localWorkspaceFolderBasename}-claude-config,target=/home/vscode/.claude,type=volume",
+    "source=musher-${localWorkspaceFolderBasename}-codex-config,target=/home/vscode/.codex,type=volume"
+  ],
+
+  "containerEnv": {
+    "PYTHONUNBUFFERED": "1",
+    "UV_LINK_MODE": "copy"
+  },
+
+  "remoteEnv": {
+    "PATH": "/home/vscode/.local/bin:${containerEnv:PATH}"
+  },
+
+  "waitFor": "postCreateCommand",
+  "postCreateCommand": "find .devcontainer/scripts -type f -name '*.sh' -exec sed -i 's/\\r$//' {} + && chmod +x .devcontainer/scripts/*.sh && .devcontainer/scripts/post-create.sh",
+  "postStartCommand": "bash .devcontainer/scripts/startup.sh",
+
+  // --- Port forwarding (uncomment and adjust) ---
+  // "forwardPorts": [3000, 6379],
+  // "portsAttributes": {
+  //   "3000": { "label": "App", "onAutoForward": "notify" },
+  //   "6379": { "label": "Redis", "onAutoForward": "silent" }
+  // },
+  "forwardPorts": [15432],
+  "portsAttributes": {
+    "15432": { "label": "PostgreSQL (example)", "onAutoForward": "silent" }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        // --- Core ---
+        "eamodio.gitlens",
+        "redhat.vscode-yaml",
+        "tamasfe.even-better-toml",
+        "github.copilot",
+        "github.copilot-chat",
+
+        // --- Language support ---
+        "golang.go",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "dbaeumer.vscode-eslint",
+
+        // --- Docker ---
+        "ms-azuretools.vscode-docker",
+
+        // --- Optional (uncomment as needed) ---
+        // "esbenp.prettier-vscode",
+        // "bierner.markdown-mermaid"
+      ],
+      "settings": {
+        // --- Editor ---
+        "editor.formatOnSave": true,
+        "editor.rulers": [80, 120],
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true,
+
+        // --- Terminal ---
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "terminal.integrated.profiles.linux": {
+          "bash": { "path": "/bin/bash" },
+          "zsh": { "path": "/bin/zsh" }
+        },
+
+        // --- Go ---
+        "go.toolsManagement.autoUpdate": true,
+
+        // --- Python ---
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.codeActionsOnSave": {
+            "source.fixAll": "explicit",
+            "source.organizeImports": "explicit"
+          }
+        },
+
+        // --- Optional: Prettier formatter overrides (uncomment with prettier extension) ---
+        // "[javascript]": {
+        //   "editor.defaultFormatter": "esbenp.prettier-vscode"
+        // },
+        // "[typescript]": {
+        //   "editor.defaultFormatter": "esbenp.prettier-vscode"
+        // },
+        // "[json]": {
+        //   "editor.defaultFormatter": "esbenp.prettier-vscode"
+        // }
+      }
+    }
+  }
+}

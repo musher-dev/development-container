@@ -1,0 +1,13 @@
+# Musher Dev Container — Docker Compose orchestrator.
+# Add service files under compose/ and include them here.
+# Services run inside Docker-in-Docker via startup.sh.
+
+include:
+  - compose/example.yml
+
+networks:
+  default:
+    name: musher-dev
+
+volumes:
+  musher-postgres-data:
