@@ -26,3 +26,13 @@ jobs:
         run: |
           cp .devcontainer/.env.example .devcontainer/.env
           docker compose -f .devcontainer/compose.yaml config --quiet
+
+  build:
+    name: Devcontainer Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build devcontainer
+        uses: devcontainers/ci@v0.3
+        with:
+          runCmd: echo "devcontainer smoke test passed"

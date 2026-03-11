@@ -36,19 +36,39 @@ trap 'on_error ${LINENO} "${BASH_COMMAND}"' ERR
 # Outputs:
 #   Writes progress/warnings to stderr via log()
 # Returns:
-#   0 always (timeout is non-fatal)
+#   0 when healthy or on timeout (non-fatal), 1 if services failed
 wait_for_healthy() {
   local timeout="${1:-60}"
   log "Waiting up to ${timeout}s for services to be healthy..."
   local elapsed=0
   while ((elapsed < timeout)); do
+    local output
+    output="$(docker compose -f "${COMPOSE_FILE}" ps --format json 2>/dev/null || true)"
+
+    # Detect failed services (exited, dead, or unhealthy)
+    local failed=""
+    failed="$(echo "$output" | grep -E '"(exited|dead|unhealthy)"' || true)"
+    if [[ -n "$failed" ]]; then
+      log "ERROR: Failing services detected:"
+      echo "$output" | grep -E '"(exited|dead|unhealthy)"' | while IFS= read -r line; do
+        local name
+        name="$(echo "$line" | grep -o '"Name":"[^"]*"' | head -1 | cut -d'"' -f4)"
+        local state
+        state="$(echo "$line" | grep -o '"State":"[^"]*"' | head -1 | cut -d'"' -f4)"
+        log "  ${name}: ${state}"
+        docker compose -f "${COMPOSE_FILE}" logs --tail=10 "$name" 2>/dev/null || true
+      done
+      return 1
+    fi
+
+    # Count services still starting
     local starting
-    starting="$(docker compose -f "${COMPOSE_FILE}" ps --format json 2>/dev/null \
-      | grep -c '"starting"' || true)"
-    if [[ "$starting" -eq 0 ]] && ((elapsed > 5)); then
+    starting="$(echo "$output" | grep -c '"starting"' || true)"
+    if [[ "$starting" -eq 0 ]]; then
       log "All services healthy"
       return 0
     fi
+
     sleep 3
     ((elapsed += 3))
   done
