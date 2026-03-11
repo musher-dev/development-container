@@ -11,7 +11,7 @@ Language runtime or system package?
   → devcontainer.json → features block
 
 CLI tool installed via curl/npm?
-  → scripts/base-setup.sh (add a function, call from post-create.sh)
+  → scripts/lib/base-setup.sh (add a function, call from post-create.sh)
 
 Infrastructure service (DB, cache, queue, storage)?
   → compose/*.yaml (new file, add to compose.yaml includes)
@@ -41,7 +41,7 @@ Runs on every container start?
 |---|---|---|
 | **Runtimes & Tools** | Language runtimes (Node, Python, Go, Java, Deno) | `devcontainer.json` → `features` |
 | | Package managers (bun, uv) | `devcontainer.json` → `features` |
-| | CLI tools (Task, Codex) | `scripts/base-setup.sh` |
+| | CLI tools (Task, Codex) | `scripts/lib/base-setup.sh` |
 | **Editor** | VS Code settings (formatters, rulers, whitespace) | `devcontainer.json` → `customizations.vscode.settings` |
 | | VS Code extensions | `devcontainer.json` → `customizations.vscode.extensions` |
 | | Debug launch configs | `.vscode/launch.json` (in consuming project) |
@@ -67,10 +67,10 @@ Runs on every container start?
 | | DB schema init (project) | `.devcontainer/config/postgres/01-project.sql` |
 | | DB migrations | Project tooling (Atlas, Flyway — not in template) |
 | | Data persistence | Compose files → named volumes |
-| **Lifecycle** | One-time container setup | `scripts/post-create.sh` → `base-setup.sh` |
+| **Lifecycle** | One-time container setup | `scripts/post-create.sh` → `lib/base-setup.sh` |
 | | Every-start tasks | `scripts/startup.sh` |
 | | Task automation | `Taskfile.yml` (in consuming project) |
-| **AI Tools** | AI CLI installation | `devcontainer.json` feature (Claude) + `base-setup.sh` (Codex) |
+| **AI Tools** | AI CLI installation | `devcontainer.json` feature (Claude) + `lib/base-setup.sh` (Codex) |
 | | AI CLI config persistence | `devcontainer.json` → `mounts` (named volumes) |
 | **Security** | Container capabilities | `devcontainer.json` → `capAdd` / `securityOpt` |
 | | Network binding | Compose files → all ports bound to `127.0.0.1` |
@@ -97,7 +97,7 @@ Comment out any runtime you don't need. Also comment out the corresponding VS Co
 
 ### CLI Tools
 
-Tools installed via curl or npm go in `scripts/base-setup.sh`. Each tool gets its own function:
+Tools installed via curl or npm go in `scripts/lib/base-setup.sh`. Each tool gets its own function:
 
 ```bash
 base_install_mytool() {
@@ -130,11 +130,14 @@ All extensions live in `devcontainer.json` → `customizations.vscode.extensions
 
 ### Shell Customization
 
-Place `*.sh` files in `.devcontainer/config/shell/`. They are sourced by zsh on startup. An example file is provided:
+Shell customization uses a shared/local pattern:
 
-```bash
-cp .devcontainer/config/shell/aliases.sh.example .devcontainer/config/shell/aliases.sh
-```
+| Pattern | Tracked | Purpose |
+|---|---|---|
+| `*.shared.sh` | Yes | Team defaults — aliases, functions, plugin config |
+| `*.local.sh` | No (gitignored) | Personal overrides — machine-specific settings |
+
+Shared files are sourced first, then local files, so local settings override team defaults. Edit `aliases.shared.sh` for team-wide aliases, or create a `*.local.sh` file for personal customizations.
 
 ### Git Config
 
@@ -280,6 +283,14 @@ SQL files in `.devcontainer/config/postgres/` are mounted into PostgreSQL's `doc
 
 All services use named Docker volumes (e.g., `musher-postgres-data`). Data persists across container restarts but is lost on full rebuild. For migrations, use project-level tooling (Atlas, Flyway, etc.).
 
+### Adding Volumes
+
+Follow the naming convention `musher-${devcontainerId}-<purpose>`:
+
+```jsonc
+"source=musher-${devcontainerId}-my-tool,target=/home/vscode/.my-tool,type=volume"
+```
+
 ---
 
 ## Lifecycle
@@ -289,12 +300,27 @@ All services use named Docker volumes (e.g., `musher-postgres-data`). Data persi
 | `postCreateCommand` | Once, on container creation | Tool installation, permissions, `.env` setup |
 | `postStartCommand` | Every container start | `docker compose up`, health checks |
 
+### Skipping Base Steps
+
+Call individual functions instead of `base_setup`:
+
+```bash
+main() {
+  log "Starting post-create setup..."
+  base_setup_config_dirs
+  base_fix_nvm_permissions
+  # Skip codex: base_install_codex
+  base_verify_tools
+  log "Post-create setup completed"
+}
+```
+
 ### Script Layers
 
 ```
-post-create.sh          ← Entry point (repo-specific customization)
-  └── base-setup.sh     ← Reusable orchestrator (AI CLIs, Task, NVM, config dirs)
-        └── common.sh   ← Shared utilities (log, retry, has_cmd, ensure_writable_dir)
+post-create.sh              ← Entry point (repo-specific customization)
+  └── lib/base-setup.sh     ← Reusable orchestrator (AI CLIs, Task, NVM, config dirs)
+        └── lib/common.sh   ← Shared utilities (log, retry, has_cmd, ensure_writable_dir)
 ```
 
 ---
@@ -339,11 +365,12 @@ AI CLI configs are stored in named volumes mounted via `devcontainer.json` → `
         datasources/          Auto-provisioned datasources
         dashboards/json/      Auto-provisioned dashboards
     shell/
-      aliases.sh.example      Example shell aliases
+      aliases.shared.sh       Team-default shell aliases
       README.md               Shell customization docs
   scripts/
     post-create.sh            One-time setup entry point
-    base-setup.sh             Reusable tool installer
-    common.sh                 Shared utilities
     startup.sh                Every-start service launcher
+    lib/
+      base-setup.sh           Reusable tool installer
+      common.sh               Shared utilities
 ```

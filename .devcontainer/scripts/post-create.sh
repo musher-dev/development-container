@@ -9,10 +9,10 @@ set -euo pipefail
 
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# shellcheck source=common.sh
-source "${SCRIPT_DIR}/common.sh"
-# shellcheck source=base-setup.sh
-source "${SCRIPT_DIR}/base-setup.sh"
+# shellcheck source=lib/common.sh
+source "${SCRIPT_DIR}/lib/common.sh"
+# shellcheck source=lib/base-setup.sh
+source "${SCRIPT_DIR}/lib/base-setup.sh"
 
 # Logs the failing command and line number on ERR.
 #
@@ -61,7 +61,10 @@ setup_shell_customization() {
     cat >> "$zshrc" <<EOF
 
 $marker
-for f in ${shell_dir}/*.sh; do
+for f in ${shell_dir}/*.shared.sh; do
+  [ -f "\$f" ] && source "\$f"
+done
+for f in ${shell_dir}/*.local.sh; do
   [ -f "\$f" ] && source "\$f"
 done
 EOF

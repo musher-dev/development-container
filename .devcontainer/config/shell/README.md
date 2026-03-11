@@ -1,15 +1,23 @@
 # Shell Customization
 
-Files matching `*.sh` in this directory are sourced by zsh on shell startup.
+Files in this directory are sourced by zsh on shell startup using the shared/local pattern.
+
+## Convention
+
+| Pattern | Tracked | Purpose |
+|---|---|---|
+| `*.shared.sh` | Yes | Team defaults — aliases, functions, plugin config |
+| `*.local.sh` | No (gitignored) | Personal overrides — machine-specific settings |
+
+Shared files are sourced first, then local files, so local settings override team defaults.
 
 ## Usage
 
-1. Copy the example file: `cp aliases.sh.example aliases.sh`
-2. Edit `aliases.sh` to add your own aliases, functions, or plugin config
-3. Open a new terminal — changes are picked up automatically
+- Edit `aliases.shared.sh` to change team-wide aliases
+- Create a `*.local.sh` file for personal customizations (e.g., `my.local.sh`)
+- Open a new terminal — changes are picked up automatically
 
 ## Notes
 
-- Only `*.sh` files are sourced (not `.example` files)
-- Files are sourced in alphabetical order
-- This directory is tracked by git; add personal-only customizations to `~/.zshrc` instead
+- Files are sourced in alphabetical order within each group
+- `*.local.sh` files are gitignored and will not be committed

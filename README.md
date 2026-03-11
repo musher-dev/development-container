@@ -23,9 +23,9 @@ Open in VS Code → **Reopen in Container**. Out of the box you get:
 ## Architecture
 
 ```
-post-create.sh          ← Entry point (repo-specific customization here)
-  └── base-setup.sh     ← Reusable orchestrator (Codex CLI, Task, NVM, config dirs)
-        └── common.sh   ← Shared utilities (log, retry, has_cmd, ensure_writable_dir)
+post-create.sh              ← Entry point (repo-specific customization here)
+  └── lib/base-setup.sh     ← Reusable orchestrator (Codex CLI, Task, NVM, config dirs)
+        └── lib/common.sh   ← Shared utilities (log, retry, has_cmd, ensure_writable_dir)
 ```
 
 Each layer sources the one below it. Repos customize by editing `post-create.sh` to add steps after `base_setup`, or by calling individual `base_*` functions for finer control.
@@ -54,42 +54,6 @@ COMPOSE_PROFILES=redis,minio
 
 See [CONFIGURATION.md](CONFIGURATION.md) for the full configuration reference.
 
-### Docker Compose Services
-
-Services run inside Docker-in-Docker via a `compose/` folder and `startup.sh`. This matches the pattern used across musher-dev repos (see [musher-dev/platform](https://github.com/musher-dev/platform) for a mature example).
-
-```
-.devcontainer/
-  compose.yaml    ← Orchestrator (includes compose/*.yaml)
-  .env.example          ← Environment template (credentials, profiles)
-  compose/
-    postgres.yaml        ← PostgreSQL with pgvector
-    redis.yaml           ← Redis (profile-gated)
-    minio.yaml           ← MinIO S3 storage (profile-gated)
-    registry.yaml        ← OCI Registry (profile-gated)
-    azimutt.yaml         ← DB explorer UI (profile-gated)
-    observability.yaml   ← Grafana/Tempo/Loki/OTel stack (profile-gated)
-  config/
-    postgres/           ← SQL init scripts mounted into PostgreSQL
-    observability/      ← OTel, Grafana, Tempo, Loki config
-    shell/              ← Shell aliases and functions (*.sh sourced by zsh)
-  scripts/
-    startup.sh          ← Starts services on every container start
-    post-create.sh      ← Installs tools once on container creation
-```
-
-**Lifecycle:** `post-create.sh` runs once when the container is created (tool installs, permissions). `startup.sh` runs on every container start via `postStartCommand` (brings up compose services, waits for health checks).
-
-**Adding a service:** Create a new file in `compose/`, add it to `compose.yaml`'s `include:` list, and optionally gate it with a profile. Add port forwarding in `devcontainer.json` as needed. Access running containers with `docker compose exec <service>`.
-
-### Adding volumes
-
-Follow the naming convention `musher-${devcontainerId}-<purpose>`:
-
-```jsonc
-"source=musher-${devcontainerId}-my-tool,target=/home/vscode/.my-tool,type=volume"
-```
-
 ### Adding repo-specific setup
 
 Edit `.devcontainer/scripts/post-create.sh` to add steps after `base_setup`:
@@ -108,21 +72,7 @@ main() {
 }
 ```
 
-### Skipping base steps
-
-Call individual functions instead of `base_setup`:
-
-```bash
-main() {
-  log "Starting post-create setup..."
-  base_setup_config_dirs
-  base_fix_nvm_permissions
-  base_install_task
-  # Skip codex: base_install_codex
-  base_verify_tools
-  log "Post-create setup completed"
-}
-```
+For Docker Compose services, volumes, shell customization, and advanced lifecycle options, see [CONFIGURATION.md](CONFIGURATION.md).
 
 ## Troubleshooting
 

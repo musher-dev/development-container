@@ -1,8 +1,10 @@
 # shellcheck shell=bash
 # Shell aliases and functions for the Musher dev container.
 # This file is meant to be sourced, not executed directly.
-# Copy or rename files to *.sh in this directory to activate them.
-# Example: cp aliases.sh.example aliases.sh
+#
+# Convention:
+#   *.shared.sh  — Team defaults (tracked in git)
+#   *.local.sh   — Personal overrides (gitignored)
 
 # --- Docker Compose shortcuts ---
 alias dc="docker compose -f /workspaces/\${PWD##*/}/.devcontainer/compose.yaml"
