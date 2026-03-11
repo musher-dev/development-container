@@ -44,15 +44,15 @@ The `devcontainer.json` includes everything by default. If your project doesn't 
 // "golang.go",
 ```
 
-### Uncomment optional features
+### Enable optional services
 
-Several features are pre-configured but commented out. Uncomment to enable:
+Optional services (Redis, MinIO, OCI Registry, Azimutt, Observability) are controlled via Compose profiles. Set `COMPOSE_PROFILES` in `.devcontainer/.env`:
 
-- **uv** — Fast Python package manager
-- **Bun** — JavaScript runtime/bundler
-- **ShellCheck** — Shell script linter
-- **Prettier** — Code formatter (extension + settings block)
-- **Port forwarding** — Pre-configured for common services
+```env
+COMPOSE_PROFILES=redis,minio
+```
+
+See [CONFIGURATION.md](CONFIGURATION.md) for the full configuration reference.
 
 ### Docker Compose Services
 
@@ -61,10 +61,18 @@ Services run inside Docker-in-Docker via a `compose/` folder and `startup.sh`. T
 ```
 .devcontainer/
   docker-compose.yml    ← Orchestrator (includes compose/*.yml)
+  .env.example          ← Environment template (credentials, profiles)
   compose/
-    example.yml         ← PostgreSQL service (replace with your own)
-  init-sql/
-    .gitkeep            ← SQL init scripts mounted into PostgreSQL
+    postgres.yml        ← PostgreSQL with pgvector
+    redis.yml           ← Redis (profile-gated)
+    minio.yml           ← MinIO S3 storage (profile-gated)
+    registry.yml        ← OCI Registry (profile-gated)
+    azimutt.yml         ← DB explorer UI (profile-gated)
+    observability.yml   ← Grafana/Tempo/Loki/OTel stack (profile-gated)
+  config/
+    postgres/           ← SQL init scripts mounted into PostgreSQL
+    observability/      ← OTel, Grafana, Tempo, Loki config
+    shell/              ← Shell aliases and functions (*.sh sourced by zsh)
   scripts/
     startup.sh          ← Starts services on every container start
     post-create.sh      ← Installs tools once on container creation
@@ -72,9 +80,7 @@ Services run inside Docker-in-Docker via a `compose/` folder and `startup.sh`. T
 
 **Lifecycle:** `post-create.sh` runs once when the container is created (tool installs, permissions). `startup.sh` runs on every container start via `postStartCommand` (brings up compose services, waits for health checks).
 
-**Adding a service:** Create a new file in `compose/` and add it to `docker-compose.yml`'s `include:` list. Add port forwarding in `devcontainer.json` as needed.
-
-**Removing the example:** Delete `compose/example.yml`, remove its `include:` entry, and remove the `15432` port forward from `devcontainer.json`.
+**Adding a service:** Create a new file in `compose/`, add it to `docker-compose.yml`'s `include:` list, and optionally gate it with a profile. Add port forwarding in `devcontainer.json` as needed.
 
 ### Adding volumes
 

@@ -12,8 +12,8 @@ services:
       - "127.0.0.1:15441:9001"
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_OBS_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_OBS_ROOT_PASSWORD:-minioadmin}
     volumes:
       - musher-minio-observability-data:/data
     healthcheck:
@@ -32,7 +32,7 @@ services:
         condition: service_healthy
     entrypoint: >
       /bin/sh -c "
-      mc alias set local http://minio-observability:9000 minioadmin minioadmin &&
+      mc alias set local http://minio-observability:9000 ${MINIO_OBS_ROOT_USER:-minioadmin} ${MINIO_OBS_ROOT_PASSWORD:-minioadmin} &&
       mc mb --ignore-existing local/tempo-traces &&
       mc mb --ignore-existing local/loki-data
       "

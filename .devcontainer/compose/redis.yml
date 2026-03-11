@@ -2,6 +2,7 @@
 
 services:
   redis:
+    profiles: [redis]
     image: redis:7-alpine
     container_name: musher-redis
     restart: unless-stopped

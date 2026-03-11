@@ -15,9 +15,9 @@
 
 include:
   - compose/postgres.yml
-  # - compose/redis.yml
-  # - compose/minio.yml
-  # - compose/registry.yml
+  - compose/redis.yml
+  - compose/minio.yml
+  - compose/registry.yml
   - compose/azimutt.yml
   - compose/observability.yml
 

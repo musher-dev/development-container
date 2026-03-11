@@ -1,19 +1,45 @@
 #!/usr/bin/env bash
 # common.sh — Shared utility functions for dev container setup scripts.
+#
+# This is a library file meant to be sourced, not executed directly.
+# Usage: source "path/to/common.sh"
+#
+# Provides logging, command helpers, directory setup, NVM/NPM utilities,
+# and tool verification functions used by all setup scripts.
 set -euo pipefail
 
 # --- Logging ---
 
+# Logs a timestamped message to stderr.
+#
+# Arguments:
+#   $@ — message text
+# Outputs:
+#   Writes timestamped message to stderr
 log() {
-  echo "[$(date '+%H:%M:%S')] $*"
+  echo "[$(date '+%H:%M:%S')] $*" >&2
 }
 
 # --- Command helpers ---
 
+# Checks whether a command exists on the PATH.
+#
+# Arguments:
+#   $1 — command name
+# Returns:
+#   0 if found, 1 otherwise
 has_cmd() {
   command -v "$1" &>/dev/null
 }
 
+# Retries a command with exponential back-off.
+#
+# Arguments:
+#   $1 — max attempts
+#   $2 — delay in seconds between attempts
+#   $@ — command and arguments to execute
+# Returns:
+#   0 on success, 1 after exhausting all attempts
 retry() {
   local attempts="${1:?usage: retry <attempts> <delay> <command...>}"
   local delay="${2:?}"
@@ -35,6 +61,11 @@ retry() {
 
 # --- Directory helpers ---
 
+# Ensures a directory exists and is owned by the given user.
+#
+# Arguments:
+#   $1 — directory path
+#   $2 — owner (default: "vscode")
 ensure_writable_dir() {
   local dir="${1:?usage: ensure_writable_dir <path>}"
   local owner="${2:-vscode}"
@@ -44,9 +75,15 @@ ensure_writable_dir() {
   sudo chown -R "${owner}:${owner}" "$dir"
 }
 
+# Creates config directories from "label:path" pairs.
+#
+# Globals:
+#   REMOTE_USER — read, falls back to "vscode"
+# Arguments:
+#   $@ — entries in "label:path" format
+# Outputs:
+#   Writes progress to stderr via log()
 setup_config_dirs() {
-  # Takes arguments in "label:path" format.
-  # Example: setup_config_dirs "gh config:/home/vscode/.config/gh" "claude:/home/vscode/.claude"
   local owner="${REMOTE_USER:-vscode}"
   for entry in "$@"; do
     local label="${entry%%:*}"
@@ -58,6 +95,12 @@ setup_config_dirs() {
 
 # --- NVM helpers ---
 
+# Fixes NVM directory ownership to the current user.
+#
+# Globals:
+#   NVM_DIR — read, defaults to /usr/local/share/nvm
+# Outputs:
+#   Writes progress to stderr via log()
 fix_nvm_permissions() {
   local nvm_dir="${NVM_DIR:-/usr/local/share/nvm}"
   if [[ -d "$nvm_dir" ]]; then
@@ -68,6 +111,13 @@ fix_nvm_permissions() {
 
 # --- NPM install helper ---
 
+# Installs an npm package globally with retry logic.
+#
+# Arguments:
+#   $1 — package name
+#   $2 — max attempts (default: 3)
+# Outputs:
+#   Writes progress to stderr via log()
 install_npm_cli() {
   local package="${1:?usage: install_npm_cli <package> [attempts]}"
   local attempts="${2:-3}"
@@ -77,8 +127,15 @@ install_npm_cli() {
 
 # --- Verification ---
 
+# Verifies that a list of commands are available on the PATH.
+#
+# Arguments:
+#   $@ — command names to check
+# Outputs:
+#   Writes status of each tool to stderr via log()
+# Returns:
+#   0 if all tools found, 1 if any are missing
 verify_tools() {
-  # Takes a list of command names to verify.
   log "Verifying installed tools..."
   local all_ok=true
   for cmd in "$@"; do
@@ -89,5 +146,5 @@ verify_tools() {
       all_ok=false
     fi
   done
-  $all_ok
+  [[ "${all_ok}" == true ]]
 }

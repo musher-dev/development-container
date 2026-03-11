@@ -83,15 +83,23 @@
   "postCreateCommand": "find .devcontainer/scripts -type f -name '*.sh' -exec sed -i 's/\\r$//' {} + && chmod +x .devcontainer/scripts/*.sh && .devcontainer/scripts/post-create.sh",
   "postStartCommand": "bash .devcontainer/scripts/startup.sh",
 
-  // --- Port forwarding (uncomment and adjust) ---
-  // "forwardPorts": [3000, 6379],
-  // "portsAttributes": {
-  //   "3000": { "label": "App", "onAutoForward": "notify" },
-  //   "6379": { "label": "Redis", "onAutoForward": "silent" }
-  // },
-  "forwardPorts": [15432],
+  "forwardPorts": [15432, 15433, 15434, 15435, 15436, 15440, 15441, 15442, 15443, 15444, 15445, 15446, 15447, 15448, 15460],
   "portsAttributes": {
-    "15432": { "label": "PostgreSQL", "onAutoForward": "silent" }
+    "15432": { "label": "PostgreSQL", "onAutoForward": "silent" },
+    "15433": { "label": "Redis", "onAutoForward": "silent" },
+    "15434": { "label": "MinIO API", "onAutoForward": "silent" },
+    "15435": { "label": "MinIO Console", "onAutoForward": "silent" },
+    "15436": { "label": "OCI Registry", "onAutoForward": "silent" },
+    "15440": { "label": "MinIO API (Observability)", "onAutoForward": "silent" },
+    "15441": { "label": "MinIO Console (Observability)", "onAutoForward": "silent" },
+    "15442": { "label": "Tempo", "onAutoForward": "silent" },
+    "15443": { "label": "Loki", "onAutoForward": "silent" },
+    "15444": { "label": "VictoriaMetrics", "onAutoForward": "silent" },
+    "15445": { "label": "OTel HTTP", "onAutoForward": "silent" },
+    "15446": { "label": "OTel gRPC", "onAutoForward": "silent" },
+    "15447": { "label": "Grafana", "onAutoForward": "silent" },
+    "15448": { "label": "Pyroscope", "onAutoForward": "silent" },
+    "15460": { "label": "Azimutt", "onAutoForward": "silent" }
   },
 
   "customizations": {

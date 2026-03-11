@@ -2,6 +2,7 @@
 
 services:
   registry:
+    profiles: [registry]
     image: registry:2
     container_name: musher-registry
     restart: unless-stopped

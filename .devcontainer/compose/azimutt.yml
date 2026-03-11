@@ -11,7 +11,7 @@ services:
     ports:
       - "127.0.0.1:15460:4000"
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/app
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-app}
     depends_on:
       postgres:
         condition: service_healthy
