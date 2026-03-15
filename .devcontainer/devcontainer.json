@@ -84,9 +84,17 @@
   "containerEnv": {
     "PYTHONUNBUFFERED": "1",
     "PYTHONDONTWRITEBYTECODE": "1",
-    "UV_LINK_MODE": "copy"
-    // "UV_CACHE_DIR": "/home/vscode/.cache/uv",
-    // "RUFF_CACHE_DIR": "/home/vscode/.cache/ruff"
+    "UV_LINK_MODE": "copy",
+    "XDG_CACHE_HOME": "/home/vscode/.cache",
+    "UV_CACHE_DIR": "/home/vscode/.cache/uv",
+    "RUFF_CACHE_DIR": "/home/vscode/.cache/ruff",
+    "PIP_CACHE_DIR": "/home/vscode/.cache/pip",
+    "MYPY_CACHE_DIR": "/home/vscode/.cache/mypy",
+    "NPM_CONFIG_CACHE": "/home/vscode/.cache/npm",
+    "DENO_DIR": "/home/vscode/.cache/deno",
+    "GOMODCACHE": "/home/vscode/.cache/go/mod",
+    "GOCACHE": "/home/vscode/.cache/go/build",
+    "BUN_INSTALL_CACHE_DIR": "/home/vscode/.cache/bun"
   },
 
   "remoteEnv": {

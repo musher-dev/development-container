@@ -36,6 +36,29 @@ base_setup_config_dirs() {
     "codex:${_HOME}/.codex"
 }
 
+# --- Cache directories ---
+
+# Creates cache directories for all dev tools so caches land
+# under a single tree instead of scattering across the filesystem.
+#
+# Globals:
+#   _HOME — read, user home directory
+# Outputs:
+#   Writes progress to stderr via log()
+base_setup_cache_dirs() {
+  setup_config_dirs \
+    "xdg cache:${_HOME}/.cache" \
+    "uv cache:${_HOME}/.cache/uv" \
+    "ruff cache:${_HOME}/.cache/ruff" \
+    "pip cache:${_HOME}/.cache/pip" \
+    "mypy cache:${_HOME}/.cache/mypy" \
+    "npm cache:${_HOME}/.cache/npm" \
+    "deno cache:${_HOME}/.cache/deno" \
+    "go mod cache:${_HOME}/.cache/go/mod" \
+    "go build cache:${_HOME}/.cache/go/build" \
+    "bun cache:${_HOME}/.cache/bun"
+}
+
 # --- NVM ---
 
 # Delegates to fix_nvm_permissions from common.sh.
@@ -80,6 +103,7 @@ base_verify_tools() {
 base_setup() {
   log "Running base setup..."
   base_setup_config_dirs
+  base_setup_cache_dirs
   base_fix_nvm_permissions
   base_install_codex
   base_verify_tools
