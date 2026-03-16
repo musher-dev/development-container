@@ -82,6 +82,22 @@ base_install_codex() {
   install_npm_cli "@openai/codex"
 }
 
+# --- Lefthook ---
+
+# Installs Lefthook if not already present.
+#
+# Outputs:
+#   Writes progress to stderr via log()
+# Returns:
+#   0 on success, non-zero on failure
+base_install_lefthook() {
+  if has_cmd lefthook; then
+    log "Lefthook already installed, skipping"
+    return 0
+  fi
+  install_npm_cli "lefthook"
+}
+
 # --- Verify ---
 
 # Verifies all expected base tools are installed.
@@ -91,7 +107,7 @@ base_install_codex() {
 # Returns:
 #   0 if all tools found, 1 if any are missing
 base_verify_tools() {
-  verify_tools gh claude task codex
+  verify_tools gh claude task codex lefthook
 }
 
 # --- Orchestrator ---
@@ -106,6 +122,7 @@ base_setup() {
   base_setup_cache_dirs
   base_fix_nvm_permissions
   base_install_codex
+  base_install_lefthook
   base_verify_tools
   log "Base setup complete"
 }
