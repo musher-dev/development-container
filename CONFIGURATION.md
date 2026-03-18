@@ -70,7 +70,7 @@ Runs on every container start?
 | **Lifecycle** | One-time container setup | `scripts/post-create.sh` → `lib/base-setup.sh` |
 | | Every-start tasks | `scripts/startup.sh` |
 | | Task automation | `Taskfile.yml` (in consuming project) |
-| **AI Tools** | AI CLI installation | `devcontainer.json` feature (Claude) + `lib/base-setup.sh` (Codex) |
+| **AI Tools** | AI CLI installation | `lib/base-setup.sh` (Claude, Codex) |
 | | AI CLI config persistence | `devcontainer.json` → `mounts` (named volumes) |
 | **Security** | Container capabilities | `devcontainer.json` → `capAdd` / `securityOpt` |
 | | Network binding | Compose files → all ports bound to `127.0.0.1` |
@@ -329,7 +329,7 @@ post-create.sh              ← Entry point (repo-specific customization)
 
 ### Installed CLIs
 
-- **Claude CLI** — Installed via the `claude-code` devcontainer Feature, config persisted in `~/.claude` volume
+- **Claude CLI** — Installed via the native installer in `base-setup.sh`, config persisted in `~/.claude` volume
 - **Codex CLI** — Installed via npm in `base-setup.sh`, config persisted in `~/.codex` volume
 
 ### Configuration Persistence
