@@ -2,15 +2,7 @@
 
 Canonical dev container template for the musher-dev organization. Batteries-included configuration with AI CLIs, multiple language runtimes, Docker-in-Docker, Task runner, and consistent VS Code settings. Comment out what you don't need.
 
-## Quick Start
-
-Copy the `.devcontainer/` directory into your repo:
-
-```bash
-cp -r .devcontainer/ /path/to/your-repo/
-```
-
-Open in VS Code → **Reopen in Container**. Out of the box you get:
+## What You Get
 
 - Ubuntu base with zsh/oh-my-zsh
 - Node, Python, Go runtimes
@@ -20,59 +12,23 @@ Open in VS Code → **Reopen in Container**. Out of the box you get:
 - GitLens, YAML, TOML, Copilot, Go, Python, Ruff, ESLint, Docker extensions
 - Format on save, rulers, trailing whitespace trimming
 
-## Architecture
+## Usage
 
-```
-post-create.sh              ← Entry point (repo-specific customization here)
-  └── lib/base-setup.sh     ← Reusable orchestrator (Codex CLI, Task, NVM, config dirs)
-        └── lib/common.sh   ← Shared utilities (log, retry, has_cmd, ensure_writable_dir)
-```
+1. Click **Use this template** → **Create a new repository** on GitHub
+2. Clone your new repo and open in VS Code
+3. **Command Palette** → **Dev Containers: Reopen in Container**
+4. *(Optional)* Copy `.devcontainer/.env.example` → `.devcontainer/.env` and set `COMPOSE_PROFILES` for optional services
 
-Each layer sources the one below it. Repos customize by editing `post-create.sh` to add steps after `base_setup`, or by calling individual `base_*` functions for finer control.
+## Customize
 
-## Customization
+- Comment out unneeded features/extensions in `devcontainer.json`
+- Add project setup to `scripts/post-create.sh` (runs after `base_setup`)
+- Enable optional services via `COMPOSE_PROFILES` in `.devcontainer/.env` (redis, minio, registry, azimutt, observability)
+- Full reference → [CONFIGURATION.md](CONFIGURATION.md)
 
-### Comment out what you don't need
+## Included CI
 
-The `devcontainer.json` includes everything by default. If your project doesn't use Go, comment out the Go feature and extension:
-
-```jsonc
-// "ghcr.io/devcontainers/features/go:1": {},
-```
-
-```jsonc
-// "golang.go",
-```
-
-### Enable optional services
-
-Optional services (Redis, MinIO, OCI Registry, Azimutt, Observability) are controlled via Compose profiles. Set `COMPOSE_PROFILES` in `.devcontainer/.env`:
-
-```env
-COMPOSE_PROFILES=redis,minio
-```
-
-See [CONFIGURATION.md](CONFIGURATION.md) for the full configuration reference.
-
-### Adding repo-specific setup
-
-Edit `.devcontainer/scripts/post-create.sh` to add steps after `base_setup`:
-
-```bash
-main() {
-  log "Starting post-create setup..."
-  base_setup
-
-  # --- Repo-specific setup ---
-  log "Installing project dependencies..."
-  npm install
-  git lfs install
-
-  log "Post-create setup completed"
-}
-```
-
-For Docker Compose services, volumes, shell customization, and advanced lifecycle options, see [CONFIGURATION.md](CONFIGURATION.md).
+This template includes `.github/workflows/validate.yaml` which runs ShellCheck, Compose config validation, and a devcontainer build check. Keep or remove per your project's needs.
 
 ## Troubleshooting
 
