@@ -9,7 +9,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
-COMPOSE_FILE="$(cd "${SCRIPT_DIR}/.." && pwd)/compose.yaml"
+DEVCONTAINER_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+readonly DEVCONTAINER_DIR
+COMPOSE_FILE="${DEVCONTAINER_DIR}/compose.yaml"
 readonly COMPOSE_FILE
 
 # shellcheck source=lib/common.sh
@@ -87,13 +89,13 @@ wait_for_healthy() {
 main() {
   if ! has_cmd docker; then
     log "Docker not available, skipping service startup"
-    show_motd ""
+    show_motd "" "${DEVCONTAINER_DIR}"
     return 0
   fi
 
   if [[ ! -f "${COMPOSE_FILE}" ]]; then
     log "No compose.yaml found, skipping service startup"
-    show_motd ""
+    show_motd "" "${DEVCONTAINER_DIR}"
     return 0
   fi
 
@@ -102,7 +104,7 @@ main() {
 
   wait_for_healthy 60
 
-  show_motd "${COMPOSE_FILE}"
+  show_motd "${COMPOSE_FILE}" "${DEVCONTAINER_DIR}"
 }
 
 main "$@"

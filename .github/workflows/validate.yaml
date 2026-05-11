@@ -29,6 +29,21 @@ jobs:
           cp .devcontainer/.env.example .devcontainer/.env
           docker compose -f .devcontainer/compose.yaml config --quiet
 
+  env-check:
+    name: Env Template Sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Task
+        uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify .env / .env.example stay in sync
+        run: |
+          cp .devcontainer/.env.example .devcontainer/.env
+          task env:check
+
   build:
     name: Devcontainer Build
     runs-on: ubuntu-latest

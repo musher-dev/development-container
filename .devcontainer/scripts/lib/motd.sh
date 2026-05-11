@@ -142,6 +142,50 @@ _motd_aliases() {
   echo "  claude                           Claude Code AI"
 }
 
+# Warns when .env is missing keys from .env.example, or has empty
+# required values. Silent when env is healthy.
+#
+# Globals:
+#   _BOLD, _DIM, _YELLOW, _RESET — color codes set by _motd_setup_colors
+# Arguments:
+#   $1 — .devcontainer directory (where .env / .env.example live)
+_motd_env_warnings() {
+  local devcontainer_dir="${1:-}"
+  [[ -d "${devcontainer_dir}" ]] || return 0
+
+  local env_file="${devcontainer_dir}/.env"
+  local example_file="${devcontainer_dir}/.env.example"
+  local lib_file="${devcontainer_dir}/scripts/lib/env-check.sh"
+  [[ -f "${lib_file}" ]] || return 0
+
+  # shellcheck source=./env-check.sh
+  source "${lib_file}"
+
+  local missing="" required=""
+  if [[ -f "${example_file}" ]]; then
+    missing="$(env_check_drift "${env_file}" "${example_file}" 2>&1 || true)"
+  fi
+  required="$(env_check_required "${env_file}" 2>/dev/null || true)"
+
+  if [[ -z "${missing}" && -z "${required}" ]]; then
+    return 0
+  fi
+
+  local sep
+  sep="$(printf '─%.0s' {1..54})"
+  echo ""
+  echo "  ${_BOLD}${_YELLOW}Environment${_RESET}"
+  echo "  ${_DIM}${sep}${_RESET}"
+  if [[ -n "${missing}" ]]; then
+    echo "  ${_YELLOW}Missing keys in .env (run 'task env:reset' to sync):${_RESET}"
+    awk '{print "    - " $0}' <<< "${missing}"
+  fi
+  if [[ -n "${required}" ]]; then
+    echo "  ${_YELLOW}Required keys with empty values:${_RESET}"
+    awk '{print "    - " $0}' <<< "${required}"
+  fi
+}
+
 _motd_tips() {
   local sep
   sep="$(printf '─%.0s' {1..54})"
@@ -159,10 +203,12 @@ _motd_tips() {
 #
 # Arguments:
 #   $1 — path to compose.yaml (may be empty to skip services)
+#   $2 — path to .devcontainer/ directory (may be empty to skip env warnings)
 # Outputs:
 #   MOTD text to stdout
 show_motd() {
   local compose_file="${1:-}"
+  local devcontainer_dir="${2:-}"
   _motd_setup_colors
 
   local border
@@ -172,6 +218,7 @@ show_motd() {
   _motd_header
   _motd_runtimes
   _motd_services "$compose_file"
+  _motd_env_warnings "$devcontainer_dir"
   _motd_aliases
   _motd_tips
   echo "${_BOLD}${border}${_RESET}"

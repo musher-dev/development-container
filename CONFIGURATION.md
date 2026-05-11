@@ -20,7 +20,7 @@ VS Code editor behavior or extension?
   → devcontainer.json → customizations.vscode block
 
 Credential or per-developer toggle?
-  → .devcontainer/.env (copy from .env.example)
+  → .devcontainer/.env (auto-created from .env.example on first build)
 
 Service-internal configuration (tuning, pipelines)?
   → config/<service>/ directory
@@ -168,7 +168,15 @@ Never commit secrets. Forward them from your host environment:
 
 ### Service Credentials
 
-Dev-only credentials live in `.devcontainer/.env` (gitignored). Copy from `.env.example` on first use — `post-create.sh` does this automatically.
+Dev-only credentials live in `.devcontainer/.env` (gitignored). The host-side `initializeCommand` (`scripts/initialize.sh`) copies `.env.example` → `.env` on first build, so `runArgs --env-file` has a valid file to load. The same file is also auto-discovered by Docker Compose. To reset, delete `.devcontainer/.env` and rebuild — or run `task env:reset`.
+
+The template follows a three-state grammar:
+
+| State | Syntax | Meaning |
+|---|---|---|
+| Filled default | `VAR=value` | Safe demo value; override only if you need something different. |
+| Required (empty) | `VAR=` | Must be filled in; the MOTD warns at container start until set. |
+| Optional override | `# VAR=value` | Uncomment to enable. |
 
 ---
 
@@ -297,7 +305,8 @@ Follow the naming convention `musher-${devcontainerId}-<purpose>`:
 
 | Hook | Runs | Use For |
 |---|---|---|
-| `postCreateCommand` | Once, on container creation | Tool installation, permissions, `.env` setup |
+| `initializeCommand` | Host-side, before every `docker run` | Bootstrap that must exist before the container starts (e.g., creating `.devcontainer/.env` so `--env-file` works) |
+| `postCreateCommand` | Once, on container creation | Tool installation, permissions, lefthook hooks |
 | `postStartCommand` | Every container start | `docker compose up`, health checks |
 
 ### Skipping Base Steps
@@ -368,9 +377,12 @@ AI CLI configs are stored in named volumes mounted via `devcontainer.json` → `
       aliases.shared.sh       Team-default shell aliases
       README.md               Shell customization docs
   scripts/
+    initialize.sh             Host-side bootstrap (runs before docker run)
     post-create.sh            One-time setup entry point
     startup.sh                Every-start service launcher
     lib/
       base-setup.sh           Reusable tool installer
       common.sh               Shared utilities
+      env-check.sh            .env / .env.example drift detection
+      motd.sh                 Startup MOTD renderer
 ```
