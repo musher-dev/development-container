@@ -178,11 +178,11 @@ _motd_env_warnings() {
   echo "  ${_DIM}${sep}${_RESET}"
   if [[ -n "${missing}" ]]; then
     echo "  ${_YELLOW}Missing keys in .env (run 'task env:reset' to sync):${_RESET}"
-    echo "${missing}" | sed "s/^/    - /"
+    awk '{print "    - " $0}' <<< "${missing}"
   fi
   if [[ -n "${required}" ]]; then
     echo "  ${_YELLOW}Required keys with empty values:${_RESET}"
-    echo "${required}" | sed "s/^/    - /"
+    awk '{print "    - " $0}' <<< "${required}"
   fi
 }
 
