@@ -1,0 +1,75 @@
+version: '3'
+
+# Top-level tasks for the dev container itself. Project-specific tasks
+# should be added in a Taskfile.yml inside the consuming repo; this file
+# stays scoped to the dev environment.
+
+vars:
+  ENV_FILE: .devcontainer/.env
+  ENV_EXAMPLE: .devcontainer/.env.example
+  ENV_LIB: .devcontainer/scripts/lib/env-check.sh
+
+tasks:
+  env:check:
+    desc: Verify .devcontainer/.env has every key from .env.example (structural drift only).
+    silent: true
+    cmds:
+      - |
+        # shellcheck source={{.ENV_LIB}}
+        source "{{.ENV_LIB}}"
+        rc=0
+        missing="$(env_check_drift "{{.ENV_FILE}}" "{{.ENV_EXAMPLE}}" 2>&1)" || rc=$?
+        if [[ ${rc} -ne 0 ]]; then
+          echo "Missing keys in {{.ENV_FILE}}:"
+          echo "${missing}" | sed 's/^/  - /'
+          echo "Run 'task env:reset' to re-copy from the template (overwrites local values)."
+          exit 1
+        fi
+        echo "{{.ENV_FILE}} is in sync with {{.ENV_EXAMPLE}}."
+
+  env:required:
+    desc: List required keys (declared empty in the template) that have no value in .env.
+    silent: true
+    cmds:
+      - |
+        source "{{.ENV_LIB}}"
+        required="$(env_check_required "{{.ENV_FILE}}")"
+        if [[ -z "${required}" ]]; then
+          echo "All required keys in {{.ENV_FILE}} have values."
+          exit 0
+        fi
+        echo "Required keys with empty values in {{.ENV_FILE}}:"
+        echo "${required}" | sed 's/^/  - /'
+        exit 1
+
+  env:diff:
+    desc: Show keys present in one of .env / .env.example but not the other.
+    silent: true
+    cmds:
+      - |
+        source "{{.ENV_LIB}}"
+        expected="$(env_check_keys "{{.ENV_EXAMPLE}}" | sort -u)"
+        actual="$(env_check_keys "{{.ENV_FILE}}" | sort -u)"
+        missing="$(comm -23 <(echo "${expected}") <(echo "${actual}"))"
+        extra="$(comm -13 <(echo "${expected}") <(echo "${actual}"))"
+        if [[ -z "${missing}" && -z "${extra}" ]]; then
+          echo "Keys are in sync."
+          exit 0
+        fi
+        [[ -n "${missing}" ]] && { echo "Missing from .env:"; echo "${missing}" | sed 's/^/  - /'; }
+        [[ -n "${extra}" ]]   && { echo "Extra in .env (not in template):"; echo "${extra}" | sed 's/^/  + /'; }
+
+  env:reset:
+    desc: Re-copy .env.example over .env (destroys local values). Prompts for confirmation.
+    silent: true
+    cmds:
+      - |
+        if [[ -f "{{.ENV_FILE}}" ]]; then
+          read -r -p "Overwrite {{.ENV_FILE}} with the template? [y/N] " ans
+          case "${ans}" in
+            y|Y|yes|YES) ;;
+            *) echo "Aborted."; exit 1 ;;
+          esac
+        fi
+        cp "{{.ENV_EXAMPLE}}" "{{.ENV_FILE}}"
+        echo "Wrote {{.ENV_FILE}} from {{.ENV_EXAMPLE}}."

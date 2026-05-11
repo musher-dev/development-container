@@ -70,6 +70,11 @@
   // Allow debuggers (gdb, strace, delve) to attach to processes.
   "capAdd": ["SYS_PTRACE"],
 
+  // Load .devcontainer/.env into the container at `docker run` time so
+  // processes inside the container (shells, runtimes, task runs) see the
+  // same vars Docker Compose interpolates into service configs.
+  "runArgs": ["--env-file", "${localWorkspaceFolder}/.devcontainer/.env"],
+
   "mounts": [
     "source=musher-${devcontainerId}-gh-config,target=/home/vscode/.config/gh,type=volume",
     "source=musher-${devcontainerId}-claude-config,target=/home/vscode/.claude,type=volume",
@@ -99,6 +104,11 @@
     // Uncomment if Go feature auto-sets GOROOT incorrectly:
     // "GOROOT": ""
   },
+
+  // Host-side bootstrap: creates .devcontainer/.env from the template
+  // (if missing) and strips CRLF, so --env-file above has a valid target
+  // even on a fresh clone.
+  "initializeCommand": ["bash", ".devcontainer/scripts/initialize.sh"],
 
   "waitFor": "postCreateCommand",
   "postCreateCommand": {

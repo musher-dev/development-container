@@ -17,7 +17,25 @@ Canonical dev container template for the musher-dev organization. Batteries-incl
 1. Click **Use this template** → **Create a new repository** on GitHub
 2. Clone your new repo and open in VS Code
 3. **Command Palette** → **Dev Containers: Reopen in Container**
-4. *(Optional)* Copy `.devcontainer/.env.example` → `.devcontainer/.env` and set `COMPOSE_PROFILES` for optional services
+4. *(Optional)* Edit `.devcontainer/.env` to set `COMPOSE_PROFILES` and override credentials — the file is created automatically from `.env.example` on first build.
+
+## Local Environment
+
+All local-dev state is contained under `.devcontainer/`. On first build, `initializeCommand` copies `.env.example` → `.env` (gitignored). The same file feeds:
+
+- **Docker Compose** — auto-discovered as the sibling `.env` next to `compose.yaml`, used to interpolate `${VAR:-default}` references.
+- **The dev container itself** — loaded via `runArgs --env-file`, so shells and runtimes inside the container see the same values.
+
+To reset local env state, delete `.devcontainer/.env` and rebuild. Useful task commands:
+
+| Command | Purpose |
+|---|---|
+| `task env:check` | Verify `.env` has every key from `.env.example`. |
+| `task env:required` | List required keys (declared empty in the template) that still need a value. |
+| `task env:diff` | Show keys present in one of `.env` / `.env.example` but not the other. |
+| `task env:reset` | Re-copy the template over `.env` (prompts before overwriting). |
+
+The startup MOTD also warns about drift or unfilled required keys.
 
 ## Customize
 

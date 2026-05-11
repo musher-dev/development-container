@@ -1,0 +1,16 @@
+# Lefthook git hooks. Installed by post-create.sh when lefthook is on PATH.
+# See https://lefthook.dev for syntax reference.
+
+pre-commit:
+  parallel: true
+  commands:
+    block-devcontainer-env:
+      # Defense-in-depth against committing .devcontainer/.env even if the
+      # .gitignore entry is accidentally removed. The file holds local dev
+      # secrets and should never enter version control.
+      run: |
+        if git diff --cached --name-only --diff-filter=A | grep -qx '\.devcontainer/\.env'; then
+          echo "Refusing to commit .devcontainer/.env (contains local secrets)." >&2
+          echo "Hint: 'git restore --staged .devcontainer/.env' to unstage." >&2
+          exit 1
+        fi

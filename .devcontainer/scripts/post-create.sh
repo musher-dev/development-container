@@ -29,16 +29,16 @@ on_error() {
 }
 trap 'on_error ${LINENO} "${BASH_COMMAND}"' ERR
 
-# Copies .env.example to .env if no .env exists yet.
+# Installs lefthook git hooks for this repo. Best-effort: silently
+# skips if lefthook isn't on PATH yet or no lefthook.yml exists.
 #
 # Outputs:
 #   Writes progress to stderr via log()
-setup_env_file() {
-  local devcontainer_dir="${SCRIPT_DIR}/.."
-  if [[ ! -f "${devcontainer_dir}/.env" ]] && [[ -f "${devcontainer_dir}/.env.example" ]]; then
-    log "Creating .env from .env.example..."
-    cp "${devcontainer_dir}/.env.example" "${devcontainer_dir}/.env"
-  fi
+install_lefthook_hooks() {
+  command -v lefthook >/dev/null 2>&1 || return 0
+  [[ -f "${SCRIPT_DIR}/../../lefthook.yml" ]] || return 0
+  log "Installing lefthook git hooks..."
+  (cd "${SCRIPT_DIR}/../.." && lefthook install >/dev/null 2>&1) || true
 }
 
 # Appends shell customization sourcing block to .zshrc.
@@ -80,8 +80,8 @@ EOF
 #   Writes progress to stderr via log()
 main() {
   log "Starting post-create setup..."
-  setup_env_file
   base_setup
+  install_lefthook_hooks
   setup_shell_customization
   # --- Add repo-specific setup below ---
   log "Post-create setup completed"
