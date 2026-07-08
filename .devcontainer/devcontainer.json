@@ -2,7 +2,9 @@
 // Uncomment optional blocks as needed. Comment out what you don't use.
 {
   "name": "Musher Dev",
-  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  // Pin to the LTS, not the floating :ubuntu tag — it rolls to interim releases
+  // (e.g. 25.10) that upstream Features like docker-in-docker don't support.
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
 
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind,consistency=cached",
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
