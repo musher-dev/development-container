@@ -1,0 +1,14 @@
+# Developer tools that have no devcontainer Feature.
+#
+# Everything with a Feature is pinned in devcontainer.json (baked into the
+# image); the CLIs below are npm-distributed with no Feature, so mise installs
+# and version-pins them instead. Claude Code is the one other exception — it
+# self-updates via its native installer (scripts/lib/base-setup.sh).
+#
+# Change a version here, then run `task tools:install`. Devcontainer post-create
+# runs `mise install` against this file. Docs: https://mise.jdx.dev
+# See CONFIGURATION.md → "Runtimes & Tools".
+
+[tools]
+"npm:@openai/codex" = "0.143.0"
+"npm:lefthook"      = "2.1.10"

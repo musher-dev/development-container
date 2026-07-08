@@ -62,9 +62,60 @@ base_setup_cache_dirs() {
 
 # --- NVM ---
 
-# Delegates to fix_nvm_permissions from common.sh.
+# The Node feature installs Node via nvm; fix nvm's ownership so global npm
+# installs work. Delegates to fix_nvm_permissions from common.sh.
 base_fix_nvm_permissions() {
   fix_nvm_permissions
+}
+
+# --- mise (pins the CLIs that have no devcontainer Feature) ---
+
+readonly _MISE_BIN="${_HOME}/.local/bin/mise"
+readonly _MISE_SHIMS="${_HOME}/.local/share/mise/shims"
+
+# Puts the mise shims and ~/.local/bin on PATH for the rest of this script, so
+# mise-managed CLIs and Claude are visible to base_verify_tools (lifecycle
+# hooks don't always inherit devcontainer.json remoteEnv).
+#
+# Globals:
+#   PATH — modified (export)
+base_setup_path() {
+  export PATH="${_MISE_SHIMS}:${_HOME}/.local/bin:${PATH}"
+}
+
+# Installs mise via the official installer if not already present.
+#
+# Outputs:
+#   Writes progress to stderr via log()
+# Returns:
+#   0 on success, non-zero on failure
+base_install_mise() {
+  if has_cmd mise; then
+    log "mise already installed, skipping"
+    return 0
+  fi
+  log "Installing mise (https://mise.run)..."
+  retry 3 5 bash -c 'curl -fsSL https://mise.run | sh'
+}
+
+# Installs the CLIs pinned in .devcontainer/mise.toml (tools with no Feature),
+# then regenerates shims. MISE_GLOBAL_CONFIG_FILE (devcontainer.json →
+# containerEnv) points mise at that manifest.
+#
+# Globals:
+#   MISE_GLOBAL_CONFIG_FILE — read, path to the tool manifest
+# Outputs:
+#   Writes progress to stderr via log()
+# Returns:
+#   0 on success, non-zero on failure
+base_install_tools() {
+  local mise
+  mise="$(command -v mise || echo "${_MISE_BIN}")"
+  local config="${MISE_GLOBAL_CONFIG_FILE:-${_LIB_DIR}/../../mise.toml}"
+  log "Installing pinned CLIs from ${config}..."
+  "${mise}" trust "${config}" >/dev/null 2>&1 || true
+  retry 3 5 "${mise}" install
+  "${mise}" reshim >/dev/null 2>&1 || true
 }
 
 # --- Claude Code ---
@@ -84,48 +135,17 @@ base_install_claude() {
   retry 3 5 bash -c 'curl -fsSL https://claude.ai/install.sh | bash'
 }
 
-# --- Codex CLI ---
-
-# Installs the Codex CLI if not already present.
-#
-# Outputs:
-#   Writes progress to stderr via log()
-# Returns:
-#   0 on success, non-zero on failure
-base_install_codex() {
-  if has_cmd codex; then
-    log "Codex CLI already installed, skipping"
-    return 0
-  fi
-  install_npm_cli "@openai/codex"
-}
-
-# --- Lefthook ---
-
-# Installs Lefthook if not already present.
-#
-# Outputs:
-#   Writes progress to stderr via log()
-# Returns:
-#   0 on success, non-zero on failure
-base_install_lefthook() {
-  if has_cmd lefthook; then
-    log "Lefthook already installed, skipping"
-    return 0
-  fi
-  install_npm_cli "lefthook"
-}
-
 # --- Verify ---
 
-# Verifies all expected base tools are installed.
+# Verifies the CLIs this script installs (plus a couple of key Feature tools)
+# are on PATH. Runtimes are validated by the container build itself.
 #
 # Outputs:
 #   Writes tool status to stderr via log()
 # Returns:
 #   0 if all tools found, 1 if any are missing
 base_verify_tools() {
-  verify_tools gh claude task codex lefthook
+  verify_tools gh task codex lefthook claude
 }
 
 # --- Orchestrator ---
@@ -139,9 +159,10 @@ base_setup() {
   base_setup_config_dirs
   base_setup_cache_dirs
   base_fix_nvm_permissions
+  base_setup_path
+  base_install_mise
+  base_install_tools
   base_install_claude
-  base_install_codex
-  base_install_lefthook
   base_verify_tools
   log "Base setup complete"
 }

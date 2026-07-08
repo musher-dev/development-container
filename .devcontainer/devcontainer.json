@@ -7,8 +7,12 @@
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind,consistency=cached",
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
 
+  // Developer tools are pinned here as Features (baked into the image). Tools
+  // with no Feature — the Codex and Lefthook CLIs — live in
+  // .devcontainer/mise.toml; Claude Code self-updates via its native installer.
+  // See CONFIGURATION.md → "Runtimes & Tools".
   "features": {
-    // --- Core ---
+    // --- Platform ---
     "ghcr.io/devcontainers/features/common-utils:2": {
       "installZsh": true,
       "configureZshAsDefaultShell": true,
@@ -17,48 +21,35 @@
       "upgradePackages": true
     },
     "ghcr.io/devcontainers/features/git:1": {},
-    "ghcr.io/devcontainers/features/github-cli:1": {},
-
-    // --- Runtimes ---
-    "ghcr.io/devcontainers/features/node:1": {
-      "version": "lts"
-    },
-    "ghcr.io/devcontainers/features/python:1": {
-      "version": "3.13"
-    },
-    "ghcr.io/devcontainers/features/go:1": {},
-
-    // --- Docker ---
+    "ghcr.io/devcontainers/features/github-cli:1": { "version": "2.96.0" },
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
 
-    // --- Package managers ---
-    "ghcr.io/devcontainers-extra/features/bun:1": {},
-    "ghcr.io/devcontainers-extra/features/uv:1": {},
-
-    // --- Additional runtimes ---
-    "ghcr.io/devcontainers-extra/features/deno:1": {},
+    // --- Runtimes ---
+    "ghcr.io/devcontainers/features/node:1": { "version": "24.18.0" },
+    "ghcr.io/devcontainers/features/python:1": { "version": "3.13.14" },
+    "ghcr.io/devcontainers/features/go:1": { "version": "1.26.5" },
     "ghcr.io/devcontainers/features/java:1": {
       "version": "17",
       "installGradle": false,
       "installMaven": false
     },
+    "ghcr.io/devcontainers-extra/features/deno:1": { "version": "2.9.2" },
+    "ghcr.io/devcontainers-extra/features/bun:1": { "version": "1.3.14" },
+
+    // --- Package managers ---
+    "ghcr.io/devcontainers-extra/features/uv:1": { "version": "0.11.28" },
+
+    // --- Task runner & linting ---
+    "ghcr.io/devcontainers-extra/features/go-task:1": { "version": "3.52.0" },
+    "ghcr.io/lukewiwa/features/shellcheck:0": { "version": "v0.11.0" },
 
     // --- Database tooling ---
-    "ghcr.io/robbert229/devcontainer-features/postgresql-client:1": {
-      "version": "16"
-    },
+    "ghcr.io/robbert229/devcontainer-features/postgresql-client:1": { "version": "16" }
 
-    // --- Task runner ---
-    "ghcr.io/devcontainers-extra/features/go-task:1": {},
-
-    // --- Linting ---
-    "ghcr.io/lukewiwa/features/shellcheck:0": { "version": "stable" },
-
-    // --- Optional: Infrastructure tooling (uncomment as needed) ---
+    // --- Optional infrastructure tooling (uncomment as needed) ---
     // "ghcr.io/devcontainers-extra/features/opentofu:1": {},
     // "ghcr.io/devcontainers-extra/features/digitalocean-cli:1": {},
-    // "ghcr.io/devcontainers-extra/features/cloudflared:1": {},
-    // "ghcr.io/devcontainers/features/copilot-cli:1": {}
+    // "ghcr.io/devcontainers-extra/features/cloudflared:1": {}
   },
 
   "containerUser": "vscode",
@@ -84,6 +75,11 @@
   ],
 
   "containerEnv": {
+    // Point mise at the workspace manifest (it lives under .devcontainer/, not
+    // the repo root) and auto-trust it so `mise install` runs without a prompt.
+    "MISE_GLOBAL_CONFIG_FILE": "${containerWorkspaceFolder}/.devcontainer/mise.toml",
+    "MISE_TRUSTED_CONFIG_PATHS": "${containerWorkspaceFolder}",
+
     "PYTHONUNBUFFERED": "1",
     "PYTHONDONTWRITEBYTECODE": "1",
     "UV_LINK_MODE": "copy",
@@ -100,9 +96,8 @@
   },
 
   "remoteEnv": {
-    "PATH": "/home/vscode/.local/bin:${containerEnv:PATH}"
-    // Uncomment if Go feature auto-sets GOROOT incorrectly:
-    // "GOROOT": ""
+    // mise shims (codex, lefthook) + ~/.local/bin (mise, Claude Code) on PATH.
+    "PATH": "/home/vscode/.local/share/mise/shims:/home/vscode/.local/bin:${containerEnv:PATH}"
   },
 
   // Host-side bootstrap: creates .devcontainer/.env from the template

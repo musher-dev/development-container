@@ -10,6 +10,17 @@ vars:
   ENV_LIB: .devcontainer/scripts/lib/env-check.sh
 
 tasks:
+  tools:install:
+    desc: Install the pinned CLIs from .devcontainer/mise.toml (codex, lefthook).
+    cmds:
+      - mise install
+
+  tools:doctor:
+    desc: Show mise-managed tool versions and diagnose the toolchain.
+    cmds:
+      - mise current
+      - mise doctor
+
   env:check:
     desc: Verify .devcontainer/.env has every key from .env.example (structural drift only).
     silent: true

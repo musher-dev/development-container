@@ -196,6 +196,7 @@ _motd_tips() {
   echo "  * Enable services:         edit .devcontainer/.env"
   echo "  * Available profiles:      redis, minio, registry,"
   echo "                             azimutt, observability"
+  echo "  * Tool versions:           CONFIGURATION.md (Runtimes & Tools)"
   echo "  * Shell config docs:       config/shell/README.md"
 }
 

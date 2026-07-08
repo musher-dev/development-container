@@ -5,10 +5,10 @@ Canonical dev container template for the musher-dev organization. Batteries-incl
 ## What You Get
 
 - Ubuntu base with zsh/oh-my-zsh
-- Node, Python, Go runtimes
+- Node, Python, Go, Java, Deno, bun, uv — pinned Features
 - Docker-in-Docker
 - Git + GitHub CLI
-- Claude CLI + Codex CLI + Task runner
+- Claude Code + Codex CLI + Task runner + Lefthook
 - GitLens, YAML, TOML, Copilot, Go, Python, Ruff, ESLint, Docker extensions
 - Format on save, rulers, trailing whitespace trimming
 
@@ -40,6 +40,7 @@ The startup MOTD also warns about drift or unfilled required keys.
 ## Customize
 
 - Comment out unneeded features/extensions in `devcontainer.json`
+- Change a tool version → `devcontainer.json` (Features), or `.devcontainer/mise.toml` for CLIs without a Feature (codex, lefthook)
 - Add project setup to `scripts/post-create.sh` (runs after `base_setup`)
 - Enable optional services via `COMPOSE_PROFILES` in `.devcontainer/.env` (redis, minio, registry, azimutt, observability)
 - Full reference → [CONFIGURATION.md](CONFIGURATION.md)

@@ -7,11 +7,14 @@
 ```
 Where does my configuration go?
 
-Language runtime or system package?
-  → devcontainer.json → features block
+Runtime, or any tool that has a devcontainer Feature?
+  → devcontainer.json → features block (pin the version)
 
-CLI tool installed via curl/npm?
-  → scripts/lib/base-setup.sh (add a function, call from post-create.sh)
+CLI with no Feature (npm-distributed, e.g. codex, lefthook)?
+  → .devcontainer/mise.toml
+
+Self-updating CLI (e.g. Claude Code)?
+  → scripts/lib/base-setup.sh (native installer)
 
 Infrastructure service (DB, cache, queue, storage)?
   → compose/*.yaml (new file, add to compose.yaml includes)
@@ -39,9 +42,9 @@ Runs on every container start?
 
 | Category | Need | Canonical Location |
 |---|---|---|
-| **Runtimes & Tools** | Language runtimes (Node, Python, Go, Java, Deno) | `devcontainer.json` → `features` |
-| | Package managers (bun, uv) | `devcontainer.json` → `features` |
-| | CLI tools (Task, Codex) | `scripts/lib/base-setup.sh` |
+| **Runtimes & Tools** | Anything with a Feature (Node, Python, Go, Java, Deno, bun, uv, gh, Task, ShellCheck) | `devcontainer.json` → `features` (pinned) |
+| | CLIs with no Feature (Codex, Lefthook) | `.devcontainer/mise.toml` |
+| | Self-updating CLIs (Claude Code) | `scripts/lib/base-setup.sh` |
 | **Editor** | VS Code settings (formatters, rulers, whitespace) | `devcontainer.json` → `customizations.vscode.settings` |
 | | VS Code extensions | `devcontainer.json` → `customizations.vscode.extensions` |
 | | Debug launch configs | `.vscode/launch.json` (in consuming project) |
@@ -70,7 +73,8 @@ Runs on every container start?
 | **Lifecycle** | One-time container setup | `scripts/post-create.sh` → `lib/base-setup.sh` |
 | | Every-start tasks | `scripts/startup.sh` |
 | | Task automation | `Taskfile.yml` (in consuming project) |
-| **AI Tools** | AI CLI installation | `lib/base-setup.sh` (Claude, Codex) |
+| **AI Tools** | Claude Code (native installer) | `lib/base-setup.sh` |
+| | Codex CLI (pinned) | `.devcontainer/mise.toml` |
 | | AI CLI config persistence | `devcontainer.json` → `mounts` (named volumes) |
 | **Security** | Container capabilities | `devcontainer.json` → `capAdd` / `securityOpt` |
 | | Network binding | Compose files → all ports bound to `127.0.0.1` |
@@ -79,38 +83,45 @@ Runs on every container start?
 
 ## Runtimes & Tools
 
-### Language Runtimes
+Tools land in one of three places. **Prefer a Feature** — if one exists, pin its version there.
 
-Add or remove runtimes in `devcontainer.json` → `features`:
+### 1. Tools with a Feature → `devcontainer.json`
+
+Runtimes and any CLI that ships a devcontainer Feature are pinned in the `features` block, so they're baked into the image:
 
 ```jsonc
 "features": {
-  "ghcr.io/devcontainers/features/node:1": { "version": "lts" },
-  "ghcr.io/devcontainers/features/python:1": { "version": "3.13" },
-  "ghcr.io/devcontainers/features/go:1": {},
-  "ghcr.io/devcontainers/features/java:1": { "version": "17" },
-  "ghcr.io/devcontainers-extra/features/deno:1": {}
+  "ghcr.io/devcontainers/features/node:1": { "version": "24.18.0" },
+  "ghcr.io/devcontainers/features/python:1": { "version": "3.13.14" },
+  "ghcr.io/devcontainers-extra/features/deno:1": { "version": "2.9.2" }
 }
 ```
 
-Comment out any runtime you don't need. Also comment out the corresponding VS Code extension.
+Comment out any tool you don't need (and its matching VS Code extension). Pin an exact version where the Feature supports it; a couple track a major line instead (`java: 17`, `postgresql-client: 16`).
 
-### CLI Tools
+### 2. CLIs with no Feature → `.devcontainer/mise.toml`
 
-Tools installed via curl or npm go in `scripts/lib/base-setup.sh`. Each tool gets its own function:
+npm-distributed CLIs like Codex and Lefthook have no Feature, so [mise](https://mise.jdx.dev) pins and installs them. Add a line under `[tools]`:
+
+```toml
+[tools]
+"npm:@openai/codex" = "0.143.0"
+"npm:lefthook"      = "2.1.10"
+```
+
+`mise install` runs in post-create; re-run it (or `task tools:install`) after editing.
+
+### 3. Self-updating CLIs → `scripts/lib/base-setup.sh`
+
+CLIs that manage their own updates (Claude Code) install via their native installer. Add a function and call it from `base_setup()`:
 
 ```bash
 base_install_mytool() {
-  if has_cmd mytool; then
-    log "mytool already installed, skipping"
-    return 0
-  fi
+  has_cmd mytool && return 0
   log "Installing mytool..."
   retry 3 5 bash -c 'curl -fsSL https://mytool.dev/install.sh | bash'
 }
 ```
-
-Add the call to `base_setup()` and to `base_verify_tools`.
 
 ---
 
@@ -317,8 +328,12 @@ Call individual functions instead of `base_setup`:
 main() {
   log "Starting post-create setup..."
   base_setup_config_dirs
+  base_setup_cache_dirs
   base_fix_nvm_permissions
-  # Skip codex: base_install_codex
+  base_setup_path
+  base_install_mise
+  # Skip the mise CLIs: base_install_tools
+  base_install_claude
   base_verify_tools
   log "Post-create setup completed"
 }
@@ -328,7 +343,7 @@ main() {
 
 ```
 post-create.sh              ← Entry point (repo-specific customization)
-  └── lib/base-setup.sh     ← Reusable orchestrator (AI CLIs, Task, NVM, config dirs)
+  └── lib/base-setup.sh     ← Reusable orchestrator (mise CLIs, Claude, nvm, config/cache dirs)
         └── lib/common.sh   ← Shared utilities (log, retry, has_cmd, ensure_writable_dir)
 ```
 
@@ -338,8 +353,8 @@ post-create.sh              ← Entry point (repo-specific customization)
 
 ### Installed CLIs
 
-- **Claude CLI** — Installed via the native installer in `base-setup.sh`, config persisted in `~/.claude` volume
-- **Codex CLI** — Installed via npm in `base-setup.sh`, config persisted in `~/.codex` volume
+- **Claude Code** — native self-updating installer (`base-setup.sh`), config persisted in the `~/.claude` volume
+- **Codex CLI** — pinned in `.devcontainer/mise.toml`, config persisted in the `~/.codex` volume
 
 ### Configuration Persistence
 
@@ -351,8 +366,9 @@ AI CLI configs are stored in named volumes mounted via `devcontainer.json` → `
 
 ```
 .devcontainer/
-  devcontainer.json           Runtimes, extensions, settings, mounts, ports
-  compose.yaml          Service orchestrator (includes compose/*.yaml)
+  devcontainer.json           Features, extensions, settings, mounts, ports
+  mise.toml                   CLIs without a Feature (codex, lefthook)
+  compose.yaml                Service orchestrator (includes compose/*.yaml)
   .env.example                Environment template (copy to .env)
   .env                        Local overrides (gitignored)
   compose/
@@ -381,7 +397,7 @@ AI CLI configs are stored in named volumes mounted via `devcontainer.json` → `
     post-create.sh            One-time setup entry point
     startup.sh                Every-start service launcher
     lib/
-      base-setup.sh           Reusable tool installer
+      base-setup.sh           Reusable tool installer (mise CLIs + Claude)
       common.sh               Shared utilities
       env-check.sh            .env / .env.example drift detection
       motd.sh                 Startup MOTD renderer
