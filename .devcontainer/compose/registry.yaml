@@ -3,7 +3,7 @@
 services:
   registry:
     profiles: [registry]
-    image: registry:2
+    image: registry:2.8.3
     restart: unless-stopped
     ports:
       - "127.0.0.1:15436:5000"

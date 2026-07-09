@@ -3,7 +3,7 @@
 services:
   redis:
     profiles: [redis]
-    image: redis:7-alpine
+    image: redis:7.4.9-alpine
     restart: unless-stopped
     ports:
       - "127.0.0.1:15433:6379"

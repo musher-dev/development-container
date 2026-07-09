@@ -1,0 +1,36 @@
+# Dependabot keeps the dev container supply chain fresh.
+# Docs: https://containers.dev/guide/dependabot
+#
+# - devcontainers  : bumps Features in devcontainer.json AND refreshes
+#                    .devcontainer/devcontainer-lock.json (digest pins).
+# - github-actions : bumps the actions pinned in .github/workflows/.
+# - docker         : bumps the image tags in the compose files.
+version: 2
+updates:
+  - package-ecosystem: "devcontainers"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "devcontainer"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"
+
+  # Compose service images. The image refs live in .devcontainer/compose/*.yaml
+  # fragments (non-standard names, pulled in via `include:`), so both the
+  # .devcontainer root and the compose/ dir are scanned. If Dependabot does not
+  # surface PRs for the fragments, verify detection under
+  # Insights -> Dependency graph -> Dependabot and adjust these directories.
+  - package-ecosystem: "docker"
+    directories:
+      - "/.devcontainer"
+      - "/.devcontainer/compose"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "docker"

@@ -28,6 +28,24 @@ jobs:
         run: |
           cp .devcontainer/.env.example .devcontainer/.env
           docker compose -f .devcontainer/compose.yaml config --quiet
+      - name: Reject floating image tags
+        run: |
+          # Fail on :latest / :main tags that are not digest-pinned (@sha256:...).
+          if grep -rnE 'image:.*(:latest|:main)([[:space:]]|$)' \
+               .devcontainer/compose.yaml .devcontainer/compose/; then
+            echo "::error::Floating image tag found. Pin to a version or digest." >&2
+            exit 1
+          fi
+
+  lockfile:
+    name: Devcontainer Lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enforce devcontainer-lock.json is current
+        # --frozen-lockfile fails if the committed lock is missing or its
+        # resolved Feature digests drift from devcontainer.json.
+        run: npx -y @devcontainers/cli build --workspace-folder . --frozen-lockfile
 
   env-check:
     name: Env Template Sync

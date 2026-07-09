@@ -2,7 +2,7 @@
 
 services:
   postgres:
-    image: pgvector/pgvector:pg17
+    image: pgvector/pgvector:0.8.5-pg17
     restart: unless-stopped
     ports:
       - "127.0.0.1:15432:5432"
