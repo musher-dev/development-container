@@ -24,10 +24,10 @@
     },
     "ghcr.io/devcontainers/features/git:1": {},
     "ghcr.io/devcontainers/features/github-cli:1": { "version": "2.96.0" },
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:4": {},
 
     // --- Runtimes ---
-    "ghcr.io/devcontainers/features/node:1": { "version": "24.18.0" },
+    "ghcr.io/devcontainers/features/node:2": { "version": "24.18.0" },
     "ghcr.io/devcontainers/features/python:1": { "version": "3.13.14" },
     "ghcr.io/devcontainers/features/go:1": { "version": "1.26.5" },
     "ghcr.io/devcontainers/features/java:1": {

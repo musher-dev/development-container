@@ -32,7 +32,7 @@ jobs:
         run: |
           # Fail on :latest / :main tags that are not digest-pinned (@sha256:...).
           if grep -rnE 'image:.*(:latest|:main)([[:space:]]|$)' \
-               .devcontainer/compose.yaml .devcontainer/compose/; then
+               .devcontainer/compose.yaml .devcontainer/stacks/; then
             echo "::error::Floating image tag found. Pin to a version or digest." >&2
             exit 1
           fi
