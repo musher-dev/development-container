@@ -28,9 +28,6 @@ Credential or per-developer toggle?
 Service-internal configuration (tuning, pipelines)?
   → stacks/<name>/ (colocated with that stack's compose.yaml)
 
-Shell aliases, oh-my-zsh plugins, or shell functions?
-  → config/shell/ directory
-
 One-time setup step?
   → scripts/post-create.sh
 
@@ -49,7 +46,6 @@ Runs on every container start?
 | | VS Code extensions | `devcontainer.json` → `customizations.vscode.extensions` |
 | | Debug launch configs | `.vscode/launch.json` (in consuming project) |
 | **Shell & User** | Default shell, prompt, oh-my-zsh config | `devcontainer.json` → `common-utils` feature |
-| | Shell aliases, functions, plugins | `.devcontainer/config/shell/` |
 | | Git config | Host `.gitconfig` (auto-forwarded by devcontainers) |
 | | Git hooks | Project repo (`.husky/` or `.githooks/`) |
 | **Environment** | Runtime behavior vars (`PYTHONUNBUFFERED`, etc.) | `devcontainer.json` → `containerEnv` |
@@ -139,17 +135,6 @@ All extensions live in `devcontainer.json` → `customizations.vscode.extensions
 
 ## Shell & User
 
-### Shell Customization
-
-Shell customization uses a shared/local pattern:
-
-| Pattern | Tracked | Purpose |
-|---|---|---|
-| `*.shared.sh` | Yes | Team defaults — aliases, functions, plugin config |
-| `*.local.sh` | No (gitignored) | Personal overrides — machine-specific settings |
-
-Shared files are sourced first, then local files, so local settings override team defaults. Edit `aliases.shared.sh` for team-wide aliases, or create a `*.local.sh` file for personal customizations.
-
 ### Git Config
 
 Git config is auto-forwarded from your host machine by the devcontainer CLI. No configuration needed in the template.
@@ -235,8 +220,6 @@ stacks/
     compose.yaml
     config/             OTel, Grafana, Tempo, Loki configs (mounted at ./config)
 ```
-
-> Shell aliases and functions are not a stack; they live in `.devcontainer/config/shell/`.
 
 ---
 
@@ -401,10 +384,6 @@ AI CLI configs are stored in named volumes mounted via `devcontainer.json` → `
         grafana/provisioning/
           datasources/         Auto-provisioned datasources
           dashboards/json/     Auto-provisioned dashboards
-  config/
-    shell/
-      aliases.shared.sh       Team-default shell aliases
-      README.md               Shell customization docs
   scripts/
     initialize.sh             Host-side bootstrap (runs before docker run)
     post-create.sh            One-time setup entry point
