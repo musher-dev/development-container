@@ -41,37 +41,6 @@ install_lefthook_hooks() {
   (cd "${SCRIPT_DIR}/../.." && lefthook install >/dev/null 2>&1) || true
 }
 
-# Appends shell customization sourcing block to .zshrc.
-#
-# The heredoc below intentionally expands ${shell_dir} at write-time so the
-# absolute path is baked into .zshrc, avoiding runtime resolution.
-#
-# Globals:
-#   REMOTE_USER — read, falls back to "vscode"
-# Outputs:
-#   Writes progress to stderr via log()
-setup_shell_customization() {
-  local shell_dir
-  shell_dir="$(cd "${SCRIPT_DIR}/../config/shell" 2>/dev/null && pwd)" || return 0
-  local zshrc="/home/${REMOTE_USER:-vscode}/.zshrc"
-  local marker="# --- musher shell customization ---"
-
-  if ! grep -qF "$marker" "$zshrc" 2>/dev/null; then
-    log "Configuring shell customization sourcing..."
-    # NOTE: ${shell_dir} is intentionally expanded at write-time (unquoted heredoc).
-    cat >> "$zshrc" <<EOF
-
-$marker
-for f in ${shell_dir}/*.shared.sh(N); do
-  [ -f "\$f" ] && source "\$f"
-done
-for f in ${shell_dir}/*.local.sh(N); do
-  [ -f "\$f" ] && source "\$f"
-done
-EOF
-  fi
-}
-
 # Entry point: runs the full post-create setup sequence.
 #
 # Arguments:
@@ -82,7 +51,6 @@ main() {
   log "Starting post-create setup..."
   base_setup
   install_lefthook_hooks
-  setup_shell_customization
   # --- Add repo-specific setup below ---
   log "Post-create setup completed"
 }

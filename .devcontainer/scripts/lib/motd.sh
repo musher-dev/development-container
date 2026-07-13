@@ -130,15 +130,15 @@ _motd_services() {
   done
 }
 
-_motd_aliases() {
+_motd_quickref() {
   local sep
   sep="$(printf '─%.0s' {1..54})"
   echo ""
   echo "  ${_BOLD}Quick Reference${_RESET}"
   echo "  ${_DIM}${sep}${_RESET}"
-  echo "  dc / dcu / dcd / dcl             Docker Compose"
-  echo "  gs / gl / gd                     Git shortcuts"
-  echo "  t                                Task runner"
+  echo "  docker compose -f .devcontainer/compose.yaml up -d / down / logs -f"
+  echo "  git status / log / diff"
+  echo "  task                             Task runner"
   echo "  claude                           Claude Code AI"
 }
 
@@ -192,12 +192,10 @@ _motd_tips() {
   echo ""
   echo "  ${_BOLD}Tips${_RESET}"
   echo "  ${_DIM}${sep}${_RESET}"
-  echo "  * Personal shell config:   config/shell/<name>.local.sh"
   echo "  * Enable services:         edit .devcontainer/.env"
   echo "  * Available profiles:      redis, minio, registry,"
   echo "                             azimutt, observability"
   echo "  * Tool versions:           CONFIGURATION.md (Runtimes & Tools)"
-  echo "  * Shell config docs:       config/shell/README.md"
 }
 
 # Renders the full MOTD to stdout.
@@ -220,7 +218,7 @@ show_motd() {
   _motd_runtimes
   _motd_services "$compose_file"
   _motd_env_warnings "$devcontainer_dir"
-  _motd_aliases
+  _motd_quickref
   _motd_tips
   echo "${_BOLD}${border}${_RESET}"
   echo ""
