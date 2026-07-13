@@ -11,7 +11,7 @@ jobs:
     name: ShellCheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Run ShellCheck
         uses: ludeeus/action-shellcheck@2.0.0
         env:
@@ -23,7 +23,7 @@ jobs:
     name: Compose Config
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Validate compose config
         run: |
           cp .devcontainer/.env.example .devcontainer/.env
@@ -32,7 +32,7 @@ jobs:
         run: |
           # Fail on :latest / :main tags that are not digest-pinned (@sha256:...).
           if grep -rnE 'image:.*(:latest|:main)([[:space:]]|$)' \
-               .devcontainer/compose.yaml .devcontainer/compose/; then
+               .devcontainer/compose.yaml .devcontainer/stacks/; then
             echo "::error::Floating image tag found. Pin to a version or digest." >&2
             exit 1
           fi
@@ -41,7 +41,7 @@ jobs:
     name: Devcontainer Lockfile
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Enforce devcontainer-lock.json is current
         # --frozen-lockfile fails if the committed lock is missing or its
         # resolved Feature digests drift from devcontainer.json.
@@ -51,7 +51,7 @@ jobs:
     name: Env Template Sync
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install Task
         uses: arduino/setup-task@v3
         with:
@@ -66,7 +66,7 @@ jobs:
     name: Devcontainer Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build devcontainer
         uses: devcontainers/ci@v0.3
         with:

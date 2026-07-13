@@ -1,5 +1,6 @@
 # Musher Dev Container — Docker Compose orchestrator.
-# Add service files under compose/ and include them here.
+# Each stack lives in its own folder under stacks/ (its compose.yaml plus any
+# config it needs); add a new folder there and include its compose.yaml below.
 # Services run inside Docker-in-Docker via startup.sh.
 #
 # Port Allocation:
@@ -14,12 +15,12 @@
 #                             15448  Pyroscope
 
 include:
-  - compose/postgres.yaml
-  - compose/redis.yaml
-  - compose/minio.yaml
-  - compose/registry.yaml
-  - compose/azimutt.yaml
-  - compose/observability.yaml
+  - stacks/postgres/compose.yaml
+  - stacks/redis/compose.yaml
+  - stacks/minio/compose.yaml
+  - stacks/registry/compose.yaml
+  - stacks/azimutt/compose.yaml
+  - stacks/observability/compose.yaml
 
 networks:
   default:
