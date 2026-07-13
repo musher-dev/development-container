@@ -21,15 +21,15 @@ updates:
     commit-message:
       prefix: "ci"
 
-  # Compose service images. The image refs live in .devcontainer/compose/*.yaml
-  # fragments (non-standard names, pulled in via `include:`), so both the
-  # .devcontainer root and the compose/ dir are scanned. If Dependabot does not
-  # surface PRs for the fragments, verify detection under
+  # Compose service images. Each stack lives in .devcontainer/stacks/<name>/ with
+  # its own standard-named compose.yaml (pulled in via `include:`), so the
+  # .devcontainer root and every stack folder are scanned. If Dependabot does not
+  # surface PRs for a stack, verify detection under
   # Insights -> Dependency graph -> Dependabot and adjust these directories.
   - package-ecosystem: "docker"
     directories:
       - "/.devcontainer"
-      - "/.devcontainer/compose"
+      - "/.devcontainer/stacks/**"
     schedule:
       interval: "weekly"
     commit-message:

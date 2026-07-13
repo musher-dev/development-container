@@ -44,7 +44,7 @@ services:
       - "127.0.0.1:15442:3200"
     command: ["-config.file=/etc/tempo/tempo-config.yaml"]
     volumes:
-      - ../config/observability/tempo-config.yaml:/etc/tempo/tempo-config.yaml:ro
+      - ./config/tempo-config.yaml:/etc/tempo/tempo-config.yaml:ro
       - musher-tempo-data:/var/tempo
     depends_on:
       minio-observability-init:
@@ -64,7 +64,7 @@ services:
       - "127.0.0.1:15443:3100"
     command: ["-config.file=/etc/loki/loki-config.yaml"]
     volumes:
-      - ../config/observability/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+      - ./config/loki-config.yaml:/etc/loki/loki-config.yaml:ro
       - musher-loki-data:/loki
     depends_on:
       minio-observability-init:
@@ -100,7 +100,7 @@ services:
       - "127.0.0.1:15446:4317"
     command: ["--config=/etc/otelcol/otel-collector-config.yaml"]
     volumes:
-      - ../config/observability/otel-collector-config.yaml:/etc/otelcol/otel-collector-config.yaml:ro
+      - ./config/otel-collector-config.yaml:/etc/otelcol/otel-collector-config.yaml:ro
     depends_on:
       tempo:
         condition: service_healthy
@@ -121,7 +121,7 @@ services:
       GF_AUTH_DISABLE_LOGIN_FORM: "true"
       GF_INSTALL_PLUGINS: grafana-pyroscope-app
     volumes:
-      - ../config/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
       - musher-grafana-data:/var/lib/grafana
     depends_on:
       tempo:

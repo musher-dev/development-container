@@ -17,7 +17,7 @@ Self-updating CLI (e.g. Claude Code)?
   → scripts/lib/base-setup.sh (native installer)
 
 Infrastructure service (DB, cache, queue, storage)?
-  → compose/*.yaml (new file, add to compose.yaml includes)
+  → stacks/<name>/compose.yaml (new folder, add to compose.yaml includes)
 
 VS Code editor behavior or extension?
   → devcontainer.json → customizations.vscode block
@@ -26,7 +26,7 @@ Credential or per-developer toggle?
   → .devcontainer/.env (auto-created from .env.example on first build)
 
 Service-internal configuration (tuning, pipelines)?
-  → config/<service>/ directory
+  → stacks/<name>/ (colocated with that stack's compose.yaml)
 
 Shell aliases, oh-my-zsh plugins, or shell functions?
   → config/shell/ directory
@@ -57,17 +57,17 @@ Runs on every container start?
 | | Service credentials (dev-only) | `.devcontainer/.env` |
 | | Service profiles/toggles | `.devcontainer/.env` → `COMPOSE_PROFILES` |
 | | Secrets (API keys, tokens) | Host env forwarded via `remoteEnv` — never committed |
-| **Services** | Infrastructure services | `.devcontainer/compose/*.yaml` |
+| **Services** | Infrastructure services | `.devcontainer/stacks/<name>/compose.yaml` |
 | | Service enable/disable | `.devcontainer/.env` → `COMPOSE_PROFILES` |
-| | Service tuning/config | `.devcontainer/config/<service>/` |
-| **Networking** | Port allocation (container-side) | `.devcontainer/compose/*.yaml` → `ports:` |
+| | Service tuning/config | `.devcontainer/stacks/<name>/` (colocated) |
+| **Networking** | Port allocation (container-side) | `.devcontainer/stacks/<name>/compose.yaml` → `ports:` |
 | | Port forwarding (to host IDE) | `devcontainer.json` → `forwardPorts` + `portsAttributes` |
 | | Service discovery | Automatic via Docker Compose `musher-dev` network |
-| **Observability** | Telemetry pipeline config | `.devcontainer/config/observability/otel-collector-config.yaml` |
-| | Grafana dashboards | `.devcontainer/config/observability/grafana/provisioning/dashboards/json/` |
-| | Grafana datasources | `.devcontainer/config/observability/grafana/provisioning/datasources/` |
-| **Data** | DB schema init (base) | `.devcontainer/config/postgres/00-init.sql` |
-| | DB schema init (project) | `.devcontainer/config/postgres/01-project.sql` |
+| **Observability** | Telemetry pipeline config | `.devcontainer/stacks/observability/config/otel-collector-config.yaml` |
+| | Grafana dashboards | `.devcontainer/stacks/observability/config/grafana/provisioning/dashboards/json/` |
+| | Grafana datasources | `.devcontainer/stacks/observability/config/grafana/provisioning/datasources/` |
+| **Data** | DB schema init (base) | `.devcontainer/stacks/postgres/init/00-init.sql` |
+| | DB schema init (project) | `.devcontainer/stacks/postgres/init/01-project.sql` |
 | | DB migrations | Project tooling (Atlas, Flyway — not in template) |
 | | Data persistence | Compose files → named volumes |
 | **Lifecycle** | One-time container setup | `scripts/post-create.sh` → `lib/base-setup.sh` |
@@ -165,7 +165,7 @@ There are four distinct scopes for environment variables. Use the right one:
 | **Container-wide** | `devcontainer.json` → `containerEnv` | Runtime behavior (`PYTHONUNBUFFERED`, `UV_LINK_MODE`) |
 | **Remote/IDE** | `devcontainer.json` → `remoteEnv` | PATH extensions, forwarded host secrets |
 | **Compose services** | `.devcontainer/.env` | Service credentials, `COMPOSE_PROFILES` |
-| **Service-specific** | `compose/*.yaml` → `environment:` | Internal service config (uses `${VAR:-default}` interpolation) |
+| **Service-specific** | `stacks/<name>/compose.yaml` → `environment:` | Internal service config (uses `${VAR:-default}` interpolation) |
 
 ### Secrets
 
@@ -214,22 +214,29 @@ COMPOSE_PROFILES=redis,minio,observability
 
 ### Adding a New Service
 
-1. Create `compose/myservice.yaml`
-2. Add `- compose/myservice.yaml` to `compose.yaml` `include:`
+1. Create `stacks/myservice/compose.yaml`
+2. Add `- stacks/myservice/compose.yaml` to `compose.yaml` `include:`
 3. Optionally add `profiles: [myservice]` if it should be opt-in
 4. Add port forwarding in `devcontainer.json` → `forwardPorts` and `portsAttributes`
 5. Use `${VAR:-default}` for any credentials, and add them to `.env.example`
 
 ### Service Configuration
 
-Service-specific config files go under `.devcontainer/config/<service>/`:
+Each stack owns its config: put a stack's config files inside its own folder,
+next to that stack's `compose.yaml`, and bind-mount them with a path relative to
+the stack folder (e.g. `./init`, `./config/...`):
 
 ```
-config/
-  postgres/           SQL init scripts
-  observability/      OTel, Grafana, Tempo, Loki configs
-  shell/              Shell aliases and functions
+stacks/
+  postgres/
+    compose.yaml
+    init/               SQL init scripts (mounted at ./init)
+  observability/
+    compose.yaml
+    config/             OTel, Grafana, Tempo, Loki configs (mounted at ./config)
 ```
+
+> Shell aliases and functions are not a stack; they live in `.devcontainer/config/shell/`.
 
 ---
 
@@ -279,11 +286,11 @@ The observability stack is profile-gated (`COMPOSE_PROFILES=observability`). It 
 
 | File | Purpose |
 |---|---|
-| `config/observability/otel-collector-config.yaml` | OTel Collector pipeline configuration |
-| `config/observability/tempo-config.yaml` | Tempo storage and ingestion config |
-| `config/observability/loki-config.yaml` | Loki storage and ingestion config |
-| `config/observability/grafana/provisioning/datasources/` | Auto-provisioned Grafana datasources |
-| `config/observability/grafana/provisioning/dashboards/json/` | Auto-provisioned Grafana dashboards |
+| `stacks/observability/config/otel-collector-config.yaml` | OTel Collector pipeline configuration |
+| `stacks/observability/config/tempo-config.yaml` | Tempo storage and ingestion config |
+| `stacks/observability/config/loki-config.yaml` | Loki storage and ingestion config |
+| `stacks/observability/config/grafana/provisioning/datasources/` | Auto-provisioned Grafana datasources |
+| `stacks/observability/config/grafana/provisioning/dashboards/json/` | Auto-provisioned Grafana dashboards |
 
 > **Note:** `tempo-config.yaml` and `loki-config.yaml` contain hardcoded MinIO credentials because they are native YAML configs that don't support environment variable interpolation. If you change `MINIO_OBS_ROOT_USER` or `MINIO_OBS_ROOT_PASSWORD` in `.env`, you must also update these files to match.
 
@@ -293,7 +300,7 @@ The observability stack is profile-gated (`COMPOSE_PROFILES=observability`). It 
 
 ### Database Initialization
 
-SQL files in `.devcontainer/config/postgres/` are mounted into PostgreSQL's `docker-entrypoint-initdb.d/` and run in alphabetical order on first container creation:
+SQL files in `.devcontainer/stacks/postgres/init/` are mounted into PostgreSQL's `docker-entrypoint-initdb.d/` and run in alphabetical order on first container creation:
 
 - `00-init.sql` — Base schema (extensions, shared types)
 - `01-project.sql.example` — Project-specific schema (copy to `01-project.sql`)
@@ -368,27 +375,33 @@ AI CLI configs are stored in named volumes mounted via `devcontainer.json` → `
 .devcontainer/
   devcontainer.json           Features, extensions, settings, mounts, ports
   mise.toml                   CLIs without a Feature (codex, lefthook)
-  compose.yaml                Service orchestrator (includes compose/*.yaml)
+  compose.yaml                Stack orchestrator (includes stacks/<name>/compose.yaml)
   .env.example                Environment template (copy to .env)
   .env                        Local overrides (gitignored)
-  compose/
-    postgres.yaml              PostgreSQL with pgvector (always on)
-    redis.yaml                 Redis (profile: redis)
-    minio.yaml                 MinIO S3 storage (profile: minio)
-    registry.yaml              OCI Registry (profile: registry)
-    azimutt.yaml               DB explorer UI (profile: azimutt)
-    observability.yaml         Full observability stack (profile: observability)
-  config/
+  stacks/                     One folder per stack: its compose.yaml + colocated config
     postgres/
-      00-init.sql             Base DB schema
-      01-project.sql.example  Project schema template
+      compose.yaml             PostgreSQL with pgvector (always on)
+      init/
+        00-init.sql            Base DB schema
+        01-project.sql.example Project schema template
+    redis/
+      compose.yaml             Redis (profile: redis)
+    minio/
+      compose.yaml             MinIO S3 storage (profile: minio)
+    registry/
+      compose.yaml             OCI Registry (profile: registry)
+    azimutt/
+      compose.yaml             DB explorer UI (profile: azimutt)
     observability/
-      otel-collector-config.yaml
-      tempo-config.yaml
-      loki-config.yaml
-      grafana/provisioning/
-        datasources/          Auto-provisioned datasources
-        dashboards/json/      Auto-provisioned dashboards
+      compose.yaml             Full observability stack (profile: observability)
+      config/
+        otel-collector-config.yaml
+        tempo-config.yaml
+        loki-config.yaml
+        grafana/provisioning/
+          datasources/         Auto-provisioned datasources
+          dashboards/json/     Auto-provisioned dashboards
+  config/
     shell/
       aliases.shared.sh       Team-default shell aliases
       README.md               Shell customization docs
