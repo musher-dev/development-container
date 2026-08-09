@@ -76,8 +76,8 @@ tasks:
     cmds:
       - |
         if [[ -f "{{.ENV_FILE}}" ]]; then
-          read -r -p "Overwrite {{.ENV_FILE}} with the template? [y/N] " ans
-          case "${ans}" in
+          read -r -p "Overwrite {{.ENV_FILE}} with the template? [y/N] " confirm
+          case "${confirm}" in
             y|Y|yes|YES) ;;
             *) echo "Aborted."; exit 1 ;;
           esac
