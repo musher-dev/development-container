@@ -1,0 +1,11 @@
+# Normalize line endings for cross-platform development
+* text=auto eol=lf
+
+# Ensure environment files never pick up Windows CRLF terminators
+.env text eol=lf
+*.env text eol=lf
+
+# Keep shell scripts and configuration consistent
+*.sh text eol=lf
+*.toml text eol=lf
+*.py text eol=lf
