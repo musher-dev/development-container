@@ -439,11 +439,13 @@ settings across container rebuilds.
   actionlint.yaml             Workflow rules      (-config-file)
   codespell.cfg               Spelling            (--config)
 .repo/                        Repo governance toolchain (the `repo` CLI)
-  README.md                   The decision rule this layout follows
+  README.md                   What each policy enforces, and why
   pyproject.toml              uv project; declares the `repo` console-script
   src/repo_governance/
     cli.py                    `repo check` and the per-policy subcommands
-    policies/config/          .config/ layout + no-shadowing-root-config
+    repo.py                   Repo-root discovery, YAML/JSONC readers
+    violations.py             The Violation record (code, reason, fix)
+    policies/config/          .config/ layout, index, and no shadowing root config
     policies/ports/           Port table ↔ forwardPorts ↔ compose parity
     policies/hooks/           lefthook ↔ CI job parity
 .github/

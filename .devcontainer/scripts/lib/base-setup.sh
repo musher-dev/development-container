@@ -135,6 +135,34 @@ base_install_claude() {
   retry 3 5 bash -c 'curl -fsSL https://claude.ai/install.sh | bash'
 }
 
+# --- Repo governance CLI ---
+
+# Installs the `repo` CLI from .repo/ so structure policies run locally the
+# same way they run in CI.
+#
+# Sequenced after base_install_tools because it needs uv on PATH, and before
+# base_verify_tools because that call asserts `repo` resolves.
+#
+# Globals:
+#   _LIB_DIR — read, used to locate the repo root
+# Outputs:
+#   Writes progress to stderr via log()
+# Returns:
+#   0 on success, non-zero on failure
+base_install_repo_cli() {
+  local repo_dir="${_LIB_DIR}/../../../.repo"
+  if [[ ! -f "${repo_dir}/pyproject.toml" ]]; then
+    log "No .repo/ project found, skipping governance CLI"
+    return 0
+  fi
+  if ! has_cmd uv; then
+    log "uv not on PATH, skipping governance CLI"
+    return 0
+  fi
+  log "Installing the repo governance CLI from .repo/..."
+  retry 3 5 uv tool install --force "${repo_dir}"
+}
+
 # --- Verify ---
 
 # Verifies the CLIs this script installs (plus a couple of key Feature tools)
@@ -145,7 +173,7 @@ base_install_claude() {
 # Returns:
 #   0 if all tools found, 1 if any are missing
 base_verify_tools() {
-  verify_tools gh task codex lefthook claude
+  verify_tools gh task codex lefthook claude repo
 }
 
 # --- Orchestrator ---
@@ -163,6 +191,7 @@ base_setup() {
   base_install_mise
   base_install_tools
   base_install_claude
+  base_install_repo_cli
   base_verify_tools
   log "Base setup complete"
 }

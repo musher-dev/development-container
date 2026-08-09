@@ -87,6 +87,18 @@ jobs:
       - name: Run every lint gate
         run: task lint:all
 
+  governance:
+    name: Repo Structure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9
+      - name: Install the repo governance CLI
+        run: uv tool install ./.repo
+      - name: Check repo structure policies
+        run: repo check
+
   build:
     name: Devcontainer Build
     runs-on: ubuntu-latest

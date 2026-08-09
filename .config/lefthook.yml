@@ -74,6 +74,13 @@ pre-commit:
       run: actionlint -config-file .config/actionlint.yaml {staged_files}
       fail_text: "Workflow lint failed. Run 'task lint:actions' for the full output."
 
+    - name: governance
+      # Structural policy: .config/ layout, port-declaration parity, and
+      # this file's own parity with CI. Cheap (pure Python, no network).
+      glob: "{.config/**,.devcontainer/**,.github/workflows/**,taskfiles/**,CONFIGURATION.md,Taskfile.yml}"
+      run: repo check
+      fail_text: "Repo structure policy failed. Run 'task repo:check' for the full report."
+
     - name: spelling
       # No glob: a typo can land in any file type.
       run: codespell --config .config/codespell.cfg {staged_files}
