@@ -55,12 +55,37 @@ jobs:
       - name: Install Task
         uses: arduino/setup-task@v3
         with:
-          version: 3.x
+          # Keep in lockstep with the go-task Feature pin in devcontainer.json.
+          version: 3.52.0
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Verify .env / .env.example stay in sync
         run: |
           cp .devcontainer/.env.example .devcontainer/.env
           task env:check
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    # Tool versions resolve from .devcontainer/mise.toml -- the same file the
+    # container uses -- so CI and local can never drift.
+    env:
+      MISE_GLOBAL_CONFIG_FILE: ${{ github.workspace }}/.devcontainer/mise.toml
+      MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install pinned lint tools
+        uses: jdx/mise-action@v4
+        with:
+          install: true
+          cache: true
+      - name: Install Task
+        uses: arduino/setup-task@v3
+        with:
+          # Keep in lockstep with the go-task Feature pin in devcontainer.json.
+          version: 3.52.0
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run every lint gate
+        run: task lint:all
 
   build:
     name: Devcontainer Build

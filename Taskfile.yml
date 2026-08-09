@@ -1,8 +1,19 @@
 version: '3'
 
-# Top-level tasks for the dev container itself. Project-specific tasks
-# should be added in a Taskfile.yml inside the consuming repo; this file
-# stays scoped to the dev environment.
+# Task entry point. This file must stay at the repo root: Task only discovers
+# Taskfile.* there, and --taskfile would break bare `task <name>`. Tool config
+# lives in .config/ instead -- see CONFIGURATION.md → "Where Configuration Lives".
+#
+# Environment tasks (tools:*, env:*) stay here because they orchestrate the dev
+# container itself. Everything else is a module under taskfiles/.
+#
+# Project-specific tasks belong in a Taskfile.yml inside the consuming repo.
+
+includes:
+  lint:
+    taskfile: taskfiles/lint.Taskfile.yml
+  repo:
+    taskfile: taskfiles/repo.Taskfile.yml
 
 vars:
   ENV_FILE: .devcontainer/.env
@@ -11,7 +22,7 @@ vars:
 
 tasks:
   tools:install:
-    desc: Install the pinned CLIs from .devcontainer/mise.toml (codex, lefthook).
+    desc: Install every pinned CLI from .devcontainer/mise.toml (AI CLIs, lefthook, linters).
     cmds:
       - mise install
 

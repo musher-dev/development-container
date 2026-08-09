@@ -50,4 +50,33 @@ pre-commit:
           echo "Refusing to commit .devcontainer/.env (contains local secrets)." >&2
           exit 1
         fi
-      fail_text: "Staged .devcontainer/.env — it holds local secrets. Run 'git restore --staged .devcontainer/.env'."
+      fail_text: >-
+        Staged .devcontainer/.env — it holds local secrets. Run
+        'git restore --staged .devcontainer/.env'.
+
+    # ── Lint (configs in .config/, versions in .devcontainer/mise.toml) ──
+    # Each job passes its config path explicitly and runs only on the staged
+    # files matching its glob, so a commit touching one Markdown file does not
+    # relint the repo.
+
+    - name: markdown
+      glob: "*.md"
+      run: markdownlint-cli2 --config .config/markdownlint.jsonc {staged_files}
+      fail_text: "Markdown lint failed. Run 'task lint:md:fix', then re-stage."
+
+    - name: yaml
+      glob: "*.{yml,yaml}"
+      run: yamllint -c .config/yamllint.yaml {staged_files}
+      fail_text: "YAML lint failed. See .config/yamllint.yaml for the active rules."
+
+    - name: actions
+      glob: ".github/workflows/*.{yml,yaml}"
+      run: actionlint -config-file .config/actionlint.yaml {staged_files}
+      fail_text: "Workflow lint failed. Run 'task lint:actions' for the full output."
+
+    - name: spelling
+      # No glob: a typo can land in any file type.
+      run: codespell --config .config/codespell.cfg {staged_files}
+      fail_text: >-
+        Spelling check failed. Run 'task lint:spelling:fix' and review the
+        diff, or add a justified entry to .config/codespell.cfg.
