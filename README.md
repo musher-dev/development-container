@@ -40,6 +40,9 @@ To reset local env state, delete `.devcontainer/.env` and rebuild. Useful task c
 | `task env:required` | List required keys (declared empty in the template) that still need a value. |
 | `task env:diff` | Show keys present in one of `.env` / `.env.example` but not the other. |
 | `task env:reset` | Re-copy the template over `.env` (prompts before overwriting). |
+| `task lint:all` | Run every lint gate (Markdown, YAML, workflows, spelling). |
+| `task repo:check` | Check the repo's own structure policies. |
+| `task tools:install` | Install every pinned CLI from `.devcontainer/mise.toml`. |
 
 The startup MOTD also warns about drift or unfilled required keys.
 
@@ -47,15 +50,26 @@ The startup MOTD also warns about drift or unfilled required keys.
 
 - Comment out unneeded features/extensions in `devcontainer.json`
 - Change a tool version → `devcontainer.json` (Features), or `.devcontainer/mise.toml` for CLIs without a Feature
-  (codex, lefthook)
+  (AI CLIs, lefthook, linters)
+- Change a lint rule → the matching file in `.config/` (see [`.config/README.md`](.config/README.md))
 - Add project setup to `scripts/post-create.sh` (runs after `base_setup`)
 - Enable optional services via `COMPOSE_PROFILES` in `.devcontainer/.env` (redis, minio, registry, azimutt, observability)
 - Full reference → [CONFIGURATION.md](CONFIGURATION.md)
 
 ## Included CI
 
-This template includes `.github/workflows/validate.yaml` which runs ShellCheck, Compose config validation, and a
-devcontainer build check. Keep or remove per your project's needs.
+`.github/workflows/validate.yaml` runs seven jobs: ShellCheck, Compose config validation, devcontainer lockfile
+freshness, `.env` template sync, the lint gates, the repo structure policies, and a devcontainer build. Lint tool
+versions resolve from `.devcontainer/mise.toml` — the same file the container uses — so CI and local cannot drift.
+
+The same lint and structure checks run pre-commit via [`.config/lefthook.yml`](.config/lefthook.yml), and
+`repo hooks check` fails the build if the two ever disagree.
+
+Branch protection is committed as JSON under [`.github/rulesets/`](.github/rulesets/RULESETS.md); it must be imported
+once per repository, since rulesets are repository state rather than content.
+
+Keep or remove per your project's needs — but remove a CI job and its ruleset entry together, or `repo rulesets check`
+will tell you why.
 
 ## Troubleshooting
 

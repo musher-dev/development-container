@@ -448,9 +448,10 @@ settings across container rebuilds.
     policies/config/          .config/ layout, index, and no shadowing root config
     policies/ports/           Port table ↔ forwardPorts ↔ compose parity
     policies/hooks/           lefthook ↔ CI job parity
+    policies/rulesets/        Branch rulesets ↔ CI job-name parity
 .github/
   dependabot.yml              Weekly updates: devcontainers, actions, docker
-  rulesets/                   Branch protection as committed JSON
+  rulesets/                   Branch protection as committed JSON (+ RULESETS.md)
   workflows/                  CI
 taskfiles/                    Task modules included by the root Taskfile.yml
 Taskfile.yml                  Task entry point (cannot move — root-only discovery)

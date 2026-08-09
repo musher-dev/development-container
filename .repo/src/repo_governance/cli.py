@@ -13,13 +13,14 @@ import sys
 from collections.abc import Callable
 
 from repo_governance import __version__
-from repo_governance.policies import config, hooks, ports
+from repo_governance.policies import config, hooks, ports, rulesets
 from repo_governance.violations import Report, render_reports
 
 POLICIES: dict[str, Callable[[], Report]] = {
     "config": config.run,
     "ports": ports.run,
     "hooks": hooks.run,
+    "rulesets": rulesets.run,
 }
 
 
