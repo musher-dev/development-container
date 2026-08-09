@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from repo_governance.violations import Violation
+from governance.reporting import Violation
 
 DOCS = "CONFIGURATION.md#port-allocation"
 

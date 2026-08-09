@@ -1,6 +1,6 @@
 """Structural policy checks for this repository.
 
-Policies live in `repo_governance.policies.<name>` and follow one shape:
+Policies live in `governance.policies.<name>` and follow one shape:
 `violations.py` declares what can go wrong and why it matters, `check.py`
 decides whether it has gone wrong. See `.repo/README.md`.
 """

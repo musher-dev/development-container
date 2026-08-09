@@ -48,7 +48,7 @@ runs `uv tool install ./.repo`). To reinstall after editing it:
 
 `hooks` is the policy most likely to be argued with, so its exceptions are
 explicit. `LOCAL_ONLY` and `CI_ONLY` in
-[`policies/hooks/check.py`](src/repo_governance/policies/hooks/check.py) list
+[`policies/hooks/check.py`](governance/policies/hooks/check.py) list
 every check that deliberately runs in only one place, each with a reason —
 `build` is minutes long, `compose` needs a Docker daemon, `block-devcontainer-env`
 has nothing to assert in CI. Adding a job on either side without registering it
@@ -60,17 +60,27 @@ fails `HOOK-01`/`HOOK-03`, and an entry that outlives what it excused fails
 ```text
 .repo/
   pyproject.toml                 uv project; declares the `repo` console-script
-  src/repo_governance/
+  governance/
     cli.py                       Argument parsing and exit codes
+    reporting.py                 The Violation record and its rendering
     repo.py                      Repo-root discovery, YAML/JSONC readers
-    violations.py                The Violation record and its rendering
-    policies/<name>/
-      violations.py              What can go wrong, and why the rule exists
-      check.py                   Whether it has gone wrong
+    policies/
+      __init__.py                The policy registry
+      <name>/
+        violations.py            What can go wrong, and why the rule exists
+        check.py                 Whether it has gone wrong
 ```
 
 Each policy splits declaration from detection on purpose: `violations.py` is
 where the reasoning lives and is the file to read first when a check fires.
+The shared `Violation` and `Report` primitives are in `reporting.py` -- named
+so that it is never confused with a policy's own `violations.py`.
+
+There is no `src/` directory. Its purpose is to stop Python from importing a
+local source tree in place of the installed package, which only happens when
+the package sits in the working directory -- and this one sits under `.repo/`,
+which is never where anyone works. `.repo/` already provides the separation,
+so `src/` would only add a level to every path.
 
 ## Adding a policy
 
@@ -78,8 +88,9 @@ where the reasoning lives and is the file to read first when a check fires.
    `__init__.py` re-exporting `run`.
 2. `run()` returns a `Report`; give every violation a stable code, a `reason`,
    and a `fix`.
-3. Register it in `POLICIES` in `cli.py` — it joins `repo check` and gains a
-   `repo <name> check` subcommand automatically.
+3. Register it in `POLICIES` in `policies/__init__.py` — it joins `repo check`
+   and gains a `repo <name> check` subcommand automatically. That is the only
+   wiring; `cli.py` never names an individual policy.
 4. Add a row to the table above.
 
 ## Not yet folded in

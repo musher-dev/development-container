@@ -10,18 +10,10 @@ from __future__ import annotations
 
 import argparse
 import sys
-from collections.abc import Callable
 
-from repo_governance import __version__
-from repo_governance.policies import config, hooks, ports, rulesets
-from repo_governance.violations import Report, render_reports
-
-POLICIES: dict[str, Callable[[], Report]] = {
-    "config": config.run,
-    "ports": ports.run,
-    "hooks": hooks.run,
-    "rulesets": rulesets.run,
-}
+from governance import __version__
+from governance.policies import POLICIES
+from governance.reporting import render_reports
 
 
 def _build_parser() -> argparse.ArgumentParser:

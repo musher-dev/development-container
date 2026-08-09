@@ -7,9 +7,9 @@ either side without registering it here fails the build.
 
 from __future__ import annotations
 
-from repo_governance import repo
-from repo_governance.policies.hooks import violations as v
-from repo_governance.violations import Report
+from governance import repo
+from governance.policies.hooks import violations as v
+from governance.reporting import Report
 
 LEFTHOOK = ".config/lefthook.yml"
 WORKFLOW = ".github/workflows/validate.yaml"

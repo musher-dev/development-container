@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from repo_governance.violations import Violation
+from governance.reporting import Violation
 
 DOCS = ".github/rulesets/RULESETS.md"
 
@@ -67,7 +67,7 @@ def unguarded_ci_job(name: str, job: str) -> Violation:
         fix=(
             f"Add a required_status_checks entry for '{job}' to {name}, or "
             "record it in ADVISORY_JOBS with a reason "
-            "(.repo/src/repo_governance/policies/rulesets/check.py)."
+            "(.repo/governance/policies/rulesets/check.py)."
         ),
         where=f".github/rulesets/{name}",
         docs=DOCS,

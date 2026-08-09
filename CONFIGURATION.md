@@ -88,7 +88,7 @@ See [`.config/README.md`](.config/README.md) for the per-file index, and
 | | GitHub Actions lint rules | `.config/actionlint.yaml` |
 | | Spelling dictionary / ignores | `.config/codespell.cfg` |
 | | Task automation for the template | `Taskfile.yml` + `taskfiles/<name>.Taskfile.yml` |
-| | Repo structure policies | `.repo/src/repo_governance/policies/` |
+| | Repo structure policies | `.repo/governance/policies/` |
 | **Editor** | VS Code settings (formatters, rulers, whitespace) | `devcontainer.json` → `customizations.vscode.settings` |
 | | VS Code extensions | `devcontainer.json` → `customizations.vscode.extensions` |
 | | Debug launch configs | `.vscode/launch.json` (in consuming project) |
@@ -441,10 +441,11 @@ settings across container rebuilds.
 .repo/                        Repo governance toolchain (the `repo` CLI)
   README.md                   What each policy enforces, and why
   pyproject.toml              uv project; declares the `repo` console-script
-  src/repo_governance/
+  governance/
     cli.py                    `repo check` and the per-policy subcommands
+    reporting.py              The Violation record (code, reason, fix)
     repo.py                   Repo-root discovery, YAML/JSONC readers
-    violations.py             The Violation record (code, reason, fix)
+    policies/__init__.py      The policy registry -- the only wiring a policy needs
     policies/config/          .config/ layout, index, and no shadowing root config
     policies/ports/           Port table ↔ forwardPorts ↔ compose parity
     policies/hooks/           lefthook ↔ CI job parity

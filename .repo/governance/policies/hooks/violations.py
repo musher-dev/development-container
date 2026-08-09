@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from repo_governance.violations import Violation
+from governance.reporting import Violation
 
 DOCS = "CONFIGURATION.md#where-configuration-lives"
 
@@ -22,7 +22,7 @@ def unregistered_hook(name: str) -> Violation:
         fix=(
             f"Add a CI job that runs the same check and map it in "
             f"HOOK_TO_CI, or record '{name}' in LOCAL_ONLY with a reason "
-            "(.repo/src/repo_governance/policies/hooks/check.py)."
+            "(.repo/governance/policies/hooks/check.py)."
         ),
         where=".config/lefthook.yml",
         docs=DOCS,
@@ -47,7 +47,7 @@ def unregistered_ci_job(name: str) -> Violation:
         reason=_WHY,
         fix=(
             f"Add a lefthook job mapped to '{name}', or record it in CI_ONLY "
-            "with a reason (.repo/src/repo_governance/policies/hooks/check.py)."
+            "with a reason (.repo/governance/policies/hooks/check.py)."
         ),
         where=".github/workflows/validate.yaml",
         docs=DOCS,
@@ -63,6 +63,6 @@ def stale_registration(kind: str, name: str) -> Violation:
             "over time until it excuses something nobody chose to excuse."
         ),
         fix=f"Remove '{name}' from the {kind} table.",
-        where=".repo/src/repo_governance/policies/hooks/check.py",
+        where=".repo/governance/policies/hooks/check.py",
         docs=DOCS,
     )

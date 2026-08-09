@@ -56,7 +56,7 @@ repository has become unmergeable.
 `RS-04` is the mirror: a job that runs but is not required is advisory, and a
 red run can still merge. If a job is genuinely meant to be non-blocking, record
 it in `ADVISORY_JOBS` in
-[`check.py`](../../.repo/src/repo_governance/policies/rulesets/check.py) with a
+[`check.py`](../../.repo/governance/policies/rulesets/check.py) with a
 reason instead of leaving the gap silent.
 
 ## Consuming projects

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import re
 
-from repo_governance import repo
-from repo_governance.policies.ports import violations as v
-from repo_governance.violations import Report
+from governance import repo
+from governance.policies.ports import violations as v
+from governance.reporting import Report
 
 RANGE_LOW, RANGE_HIGH = 15432, 15460
 

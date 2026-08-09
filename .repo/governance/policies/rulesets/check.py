@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import json
 
-from repo_governance import repo
-from repo_governance.policies.rulesets import violations as v
-from repo_governance.violations import Report
+from governance import repo
+from governance.policies.rulesets import violations as v
+from governance.reporting import Report
 
 RULESET_DIR = ".github/rulesets"
 WORKFLOW = ".github/workflows/validate.yaml"
