@@ -30,7 +30,8 @@ services:
         condition: service_healthy
     entrypoint: >
       /bin/sh -c "
-      mc alias set local http://minio-observability:9000 ${MINIO_OBS_ROOT_USER:-minioadmin} ${MINIO_OBS_ROOT_PASSWORD:-minioadmin} &&
+      mc alias set local http://minio-observability:9000
+      ${MINIO_OBS_ROOT_USER:-minioadmin} ${MINIO_OBS_ROOT_PASSWORD:-minioadmin} &&
       mc mb --ignore-existing local/tempo-traces &&
       mc mb --ignore-existing local/loki-data
       "

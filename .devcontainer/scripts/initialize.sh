@@ -13,6 +13,12 @@
 #   * Strip CRLF from .env (Windows/WSL safety — docker --env-file
 #     rejects files with CRLF line endings).
 #
+# Why this CRLF guard survives while the postCreateCommand one did not:
+# .gitattributes (`* text=auto eol=lf`) normalizes every file Git checks
+# out, which covers scripts/ and made the old `fix-crlf` step redundant.
+# It cannot cover .env — that file is gitignored, generated locally, and
+# hand-edited, so a Windows editor can reintroduce CR at any time.
+#
 # Idempotent: safe to run on every container start.
 set -euo pipefail
 
@@ -39,6 +45,8 @@ ensure_env_file() {
   fi
 }
 
+# Not redundant with .gitattributes: .env is gitignored, so Git never
+# normalizes it. See the header note.
 strip_crlf() {
   [[ -f "${ENV_FILE}" ]] || return 0
   if grep -q $'\r' "${ENV_FILE}" 2>/dev/null; then

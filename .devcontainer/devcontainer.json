@@ -102,16 +102,18 @@
     "PATH": "/home/vscode/.local/share/mise/shims:/home/vscode/.local/bin:${containerEnv:PATH}"
   },
 
-  // Host-side bootstrap: creates .devcontainer/.env from the template
-  // (if missing) and strips CRLF, so --env-file above has a valid target
-  // even on a fresh clone.
+  // Host-side bootstrap: creates .devcontainer/.env from the template (if
+  // missing) and strips CRLF from it, so --env-file above has a valid target
+  // even on a fresh clone. .env is gitignored, so .gitattributes cannot
+  // normalize it -- this guard is not redundant with that.
   "initializeCommand": ["bash", ".devcontainer/scripts/initialize.sh"],
 
   "waitFor": "postCreateCommand",
-  "postCreateCommand": {
-    "fix-crlf": "find .devcontainer/scripts -type f -name '*.sh' -exec sed -i 's/\\r$//' {} +",
-    "setup": ["bash", ".devcontainer/scripts/post-create.sh"]
-  },
+  // Line endings are enforced repo-wide by .gitattributes (`* text=auto eol=lf`),
+  // so scripts arrive with LF on every platform. No CRLF fixup step is needed
+  // here; the one remaining guard lives in initialize.sh and covers the
+  // gitignored .env, which .gitattributes cannot reach.
+  "postCreateCommand": ["bash", ".devcontainer/scripts/post-create.sh"],
   "postStartCommand": ["bash", ".devcontainer/scripts/startup.sh"],
 
   "forwardPorts": [15432, 15433, 15434, 15435, 15436, 15440, 15441, 15442, 15443, 15444, 15445, 15446, 15447, 15448, 15460],

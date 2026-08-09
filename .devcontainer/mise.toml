@@ -9,6 +9,21 @@
 # runs `mise install` against this file. Docs: https://mise.jdx.dev
 # See CONFIGURATION.md → "Runtimes & Tools".
 
+# This file is the SINGLE source of tool versions. CI resolves the same pins
+# from here via jdx/mise-action (MISE_GLOBAL_CONFIG_FILE), so a version is
+# never stated twice and local and CI cannot drift.
+#
+# Backends are fully qualified (npm:, pipx:, aqua:) rather than short names so
+# resolution does not depend on mise's registry.
+
 [tools]
+# --- AI + git hooks ------------------------------------------------------
 "npm:@openai/codex" = "0.143.0"
+# Keep in lockstep with min_version in .config/lefthook.yml.
 "npm:lefthook"      = "2.1.10"
+
+# --- Linters (configs live in .config/; see .config/README.md) -----------
+"npm:markdownlint-cli2" = "0.22.1"
+"pipx:yamllint"         = "1.38.0"
+"pipx:codespell"        = "2.4.3"
+"aqua:rhysd/actionlint" = "1.7.12"
