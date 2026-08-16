@@ -4,7 +4,7 @@
 # This is a library file meant to be sourced, not executed directly.
 # Requires common.sh (has_cmd, log) to be sourced first.
 #
-# Usage: source "path/to/motd.sh"; show_motd "/path/to/compose.yaml"
+# Usage: source "path/to/motd.sh"; show_motd "/path/to/stacks/compose.yaml" "/path/to/.devcontainer"
 
 if [[ -z "${_MOTD_SH_LOADED:-}" ]]; then
 readonly _MOTD_SH_LOADED=1
@@ -59,17 +59,14 @@ _motd_runtimes() {
   echo "  ${_BOLD}Runtimes${_RESET}"
   echo "  ${_DIM}${sep}${_RESET}"
 
-  # Row 1: node + python
   _motd_runtime_entry node "node" "node -v"
   _motd_runtime_entry python3 "python" "python3 -c 'import platform; print(platform.python_version())'"
   echo ""
 
-  # Row 2: go + java
   _motd_runtime_entry go "go" "go version | grep -oP '\\d+\\.\\d+\\.\\d+'"
   _motd_runtime_entry java "java" "java -version 2>&1 | head -1 | grep -oP '\\d+[\\d.]+'"
   echo ""
 
-  # Row 3: deno + bun
   _motd_runtime_entry deno "deno" "deno -v | head -1 | awk '{print \$2}'"
   _motd_runtime_entry bun "bun" "bun -v"
   echo ""
@@ -77,12 +74,18 @@ _motd_runtimes() {
 
 _motd_services() {
   local compose_file="$1"
+  local env_file="${2:-}"
   if [[ -z "$compose_file" ]] || [[ ! -f "$compose_file" ]] || ! has_cmd docker; then
     return 0
   fi
 
+  # Name the env file explicitly for the same reason startup.sh does: the
+  # compose file lives under stacks/ and is no longer a sibling of .env.
+  local -a env_args=()
+  [[ -n "$env_file" && -f "$env_file" ]] && env_args=(--env-file "$env_file")
+
   local output
-  output="$(docker compose -f "$compose_file" ps --format json 2>/dev/null || true)"
+  output="$(docker compose "${env_args[@]}" -f "$compose_file" ps --format json 2>/dev/null || true)"
   if [[ -z "$output" ]]; then
     return 0
   fi
@@ -101,18 +104,15 @@ _motd_services() {
     state="$(echo "$line" | grep -oP '"State"\s*:\s*"\K[^"]+' | head -1)"
     health="$(echo "$line" | grep -oP '"Health"\s*:\s*"\K[^"]+' | head -1)"
 
-    # Extract published host port
     ports="$(echo "$line" | grep -oP '"PublishedPort"\s*:\s*\K\d+' | head -1)"
 
     [[ -z "$name" ]] && continue
 
-    # Build display name
     local display_name="$name"
     if [[ -n "$ports" ]] && [[ "$ports" != "0" ]]; then
       display_name="${name} (${ports})"
     fi
 
-    # Determine status label and color
     local status_label color
     if [[ -n "$health" ]] && [[ "$health" != "" ]]; then
       status_label="$health"
@@ -136,7 +136,8 @@ _motd_quickref() {
   echo ""
   echo "  ${_BOLD}Quick Reference${_RESET}"
   echo "  ${_DIM}${sep}${_RESET}"
-  echo "  docker compose -f .devcontainer/compose.yaml up -d / down / logs -f"
+  echo "  docker compose --env-file .devcontainer/.env \\"
+  echo "    -f .devcontainer/stacks/compose.yaml up -d / down / logs -f"
   echo "  git status / log / diff"
   echo "  task                             Task runner"
   echo "  claude                           Claude Code AI"
@@ -201,8 +202,9 @@ _motd_tips() {
 # Renders the full MOTD to stdout.
 #
 # Arguments:
-#   $1 — path to compose.yaml (may be empty to skip services)
-#   $2 — path to .devcontainer/ directory (may be empty to skip env warnings)
+#   $1 — path to stacks/compose.yaml (may be empty to skip services)
+#   $2 — path to .devcontainer/ directory (may be empty to skip env warnings);
+#        also supplies the --env-file the compose file needs
 # Outputs:
 #   MOTD text to stdout
 show_motd() {
@@ -216,7 +218,7 @@ show_motd() {
   echo ""
   _motd_header
   _motd_runtimes
-  _motd_services "$compose_file"
+  _motd_services "$compose_file" "${devcontainer_dir:+${devcontainer_dir}/.env}"
   _motd_env_warnings "$devcontainer_dir"
   _motd_quickref
   _motd_tips

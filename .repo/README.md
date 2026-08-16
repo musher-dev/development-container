@@ -43,6 +43,16 @@ runs `uv tool install ./.repo`). To reinstall after editing it:
 | `ports` | `PORT-01`..`PORT-05` | The port table, `forwardPorts`/`portsAttributes`, and compose published ports all agree and stay in the reserved range |
 | `hooks` | `HOOK-01`..`HOOK-04` | Every lefthook job has a CI counterpart and vice versa, or a recorded reason why not |
 | `rulesets` | `RS-01`..`RS-04` | Committed branch rulesets stay valid and in step with the CI jobs they require |
+| `toolchain` | `TC-01`..`TC-03` | The tools the image bakes stay out of the Features block, keep exact pins, and stay in step with CI |
+| `comments` | `CMT-01`..`CMT-03` | Comment blocks stay short, the allowlist stays honest, and every `docs:` pointer still resolves |
+
+### Why `toolchain` exists
+
+`TC-01` is the policy least likely to be guessed from the code it guards: bun, uv and
+task are installed by [`.devcontainer/Dockerfile`](../.devcontainer/Dockerfile) rather
+than by their Features, because those Features fail on rate-limited build hosts.
+Re-adding one looks like a harmless simplification, which is exactly why it is a check.
+Full account: [`CONFIGURATION.md`](../CONFIGURATION.md) → "Runtimes & Tools".
 
 ### The one-way-check tables
 

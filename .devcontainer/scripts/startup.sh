@@ -2,7 +2,7 @@
 # startup.sh — Starts compose services and waits for health checks.
 #
 # Executed on every container start to bring up supporting services
-# (databases, caches, observability) defined in compose.yaml.
+# (databases, caches, observability) defined in stacks/compose.yaml.
 #
 # Usage: Called automatically by devcontainer.json postStartCommand.
 set -euo pipefail
@@ -11,8 +11,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 DEVCONTAINER_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 readonly DEVCONTAINER_DIR
-COMPOSE_FILE="${DEVCONTAINER_DIR}/compose.yaml"
+COMPOSE_FILE="${DEVCONTAINER_DIR}/stacks/compose.yaml"
 readonly COMPOSE_FILE
+# The compose file lives under stacks/, so it is no longer a sibling of .env and
+# Compose's positional auto-discovery cannot find it. Name the env file
+# explicitly on every invocation -- otherwise ${VAR:-default} silently wins and
+# COMPOSE_PROFILES reads as empty, disabling every opt-in stack without an error.
+ENV_FILE="${DEVCONTAINER_DIR}/.env"
+readonly ENV_FILE
 
 # shellcheck source=lib/common.sh
 source "${SCRIPT_DIR}/lib/common.sh"
@@ -35,10 +41,11 @@ trap 'on_error ${LINENO} "${BASH_COMMAND}"' ERR
 
 # Polls compose services until all report healthy or timeout elapses.
 #
+# Globals:
+#   COMPOSE_FILE — read, path to stacks/compose.yaml
+#   ENV_FILE     — read, path to .env (passed to every compose invocation)
 # Arguments:
 #   $1 — timeout in seconds (default: 60)
-# Globals:
-#   COMPOSE_FILE — read, path to compose.yaml
 # Outputs:
 #   Writes progress/warnings to stderr via log()
 # Returns:
@@ -49,9 +56,8 @@ wait_for_healthy() {
   local elapsed=0
   while ((elapsed < timeout)); do
     local output
-    output="$(docker compose -f "${COMPOSE_FILE}" ps --format json 2>/dev/null || true)"
+    output="$(docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" ps --format json 2>/dev/null || true)"
 
-    # Detect failed services (exited, dead, or unhealthy)
     local failed=""
     failed="$(echo "$output" | grep -E '"(exited|dead|unhealthy)"' || true)"
     if [[ -n "$failed" ]]; then
@@ -62,12 +68,11 @@ wait_for_healthy() {
         local state
         state="$(echo "$line" | grep -o '"State":"[^"]*"' | head -1 | cut -d'"' -f4)"
         log "  ${name}: ${state}"
-        docker compose -f "${COMPOSE_FILE}" logs --tail=10 "$name" 2>/dev/null || true
+        docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" logs --tail=10 "$name" 2>/dev/null || true
       done
       return 1
     fi
 
-    # Count services still starting
     local starting
     starting="$(echo "$output" | grep -c '"starting"' || true)"
     if [[ "$starting" -eq 0 ]]; then
@@ -94,13 +99,22 @@ main() {
   fi
 
   if [[ ! -f "${COMPOSE_FILE}" ]]; then
-    log "No compose.yaml found, skipping service startup"
+    log "No stacks/compose.yaml found, skipping service startup"
+    show_motd "" "${DEVCONTAINER_DIR}"
+    return 0
+  fi
+
+  # --env-file errors out on a missing path. initialize.sh creates .env on the
+  # host before the container starts, so this only trips if that hook was
+  # skipped -- say a bare `docker run` outside the devcontainer tooling.
+  if [[ ! -f "${ENV_FILE}" ]]; then
+    log "No .env found at ${ENV_FILE}; run scripts/initialize.sh first"
     show_motd "" "${DEVCONTAINER_DIR}"
     return 0
   fi
 
   log "Starting compose services..."
-  docker compose -f "${COMPOSE_FILE}" up -d --remove-orphans
+  docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --remove-orphans
 
   wait_for_healthy 60
 
