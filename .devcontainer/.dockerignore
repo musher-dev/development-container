@@ -1,0 +1,14 @@
+# Build context for .devcontainer/Dockerfile is `.devcontainer/` itself, and the
+# Dockerfile has no COPY instruction -- every tool it bakes is fetched over
+# the network from a pinned URL. So the correct context is empty.
+#
+# This is not merely tidiness. `.devcontainer/.env` is gitignored and holds
+# POSTGRES_PASSWORD and the MinIO root credentials. It is never copied, but an
+# un-ignored context is still transferred to the Docker daemon and can land in
+# the build cache.
+#
+# Deliberately the context-root form rather than a `Dockerfile.dockerignore`
+# sibling: when Features are present the devcontainer CLI synthesizes an
+# extended Dockerfile in a temp directory, so BuildKit's sibling lookup would
+# miss it. `<context>/.dockerignore` is always found.
+*

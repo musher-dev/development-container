@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from governance.policies import config, hooks, ports, rulesets
+from governance.policies import config, hooks, ports, rulesets, toolchain
 from governance.reporting import Report
 
 POLICIES: dict[str, Callable[[], Report]] = {
@@ -21,6 +21,7 @@ POLICIES: dict[str, Callable[[], Report]] = {
     "ports": ports.run,
     "hooks": hooks.run,
     "rulesets": rulesets.run,
+    "toolchain": toolchain.run,
 }
 
 __all__ = ["POLICIES"]

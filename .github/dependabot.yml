@@ -21,11 +21,16 @@ updates:
     commit-message:
       prefix: "ci"
 
-  # Compose service images. Each stack lives in .devcontainer/stacks/<name>/ with
-  # its own standard-named compose.yaml (pulled in via `include:`), so the
-  # .devcontainer root and every stack folder are scanned. If Dependabot does not
-  # surface PRs for a stack, verify detection under
-  # Insights -> Dependency graph -> Dependabot and adjust these directories.
+  # Docker images. /.devcontainer covers the Dockerfile's `FROM` base image;
+  # /.devcontainer/stacks/** covers each stack's own standard-named compose.yaml
+  # (pulled into stacks/compose.yaml via `include:`). The orchestrator itself
+  # declares no images. If Dependabot does not surface PRs for a stack, verify
+  # detection under Insights -> Dependency graph -> Dependabot and adjust these
+  # directories.
+  #
+  # Note: this does NOT cover the tool pins in the Dockerfile's ARGs (bun, uv,
+  # task, mise) -- Dependabot has no ecosystem for those. Bump them by hand;
+  # `repo toolchain check` keeps them exact and in step with CI.
   - package-ecosystem: "docker"
     directories:
       - "/.devcontainer"

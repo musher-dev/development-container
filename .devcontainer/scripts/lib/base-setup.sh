@@ -70,6 +70,9 @@ base_fix_nvm_permissions() {
 
 # --- mise (pins the CLIs that have no devcontainer Feature) ---
 
+# Fallback only: the image bakes mise at /usr/local/bin/mise, which
+# `command -v` finds first. This path covers the base_install_mise fallback,
+# which installs per-user.
 readonly _MISE_BIN="${_HOME}/.local/bin/mise"
 readonly _MISE_SHIMS="${_HOME}/.local/share/mise/shims"
 
@@ -83,7 +86,13 @@ base_setup_path() {
   export PATH="${_MISE_SHIMS}:${_HOME}/.local/bin:${PATH}"
 }
 
-# Installs mise via the official installer if not already present.
+# Installs mise if it is not already present.
+#
+# The dev container image bakes a pinned mise at /usr/local/bin/mise
+# (ARG MISE_VERSION in .devcontainer/Dockerfile), so this normally short-circuits.
+# The installer below is the fallback for a consuming repo that strips the
+# Dockerfile, and is deliberately unpinned because in that case there is no ARG
+# to read the pin from.
 #
 # Outputs:
 #   Writes progress to stderr via log()
@@ -94,7 +103,7 @@ base_install_mise() {
     log "mise already installed, skipping"
     return 0
   fi
-  log "Installing mise (https://mise.run)..."
+  log "mise not baked into the image; falling back to https://mise.run..."
   retry 3 5 bash -c 'curl -fsSL https://mise.run | sh'
 }
 

@@ -18,8 +18,12 @@ Does it configure a linter, formatter, or the git hooks?
 Does it provision the container itself?
   → .devcontainer/ (see the branches below)
 
-Runtime, or any tool that has a devcontainer Feature?
+Runtime, or a tool with a Feature whose installer avoids api.github.com?
   → devcontainer.json → features block (pin the version)
+
+Tool whose Feature is rate-limit-fragile, or that must exist before
+Features run (bun, uv, task, mise)?
+  → .devcontainer/Dockerfile → an ARG pin
 
 CLI with no Feature (npm-distributed, e.g. codex, lefthook)?
   → .devcontainer/mise.toml
@@ -28,7 +32,7 @@ Self-updating CLI (e.g. Claude Code)?
   → scripts/lib/base-setup.sh (native installer)
 
 Infrastructure service (DB, cache, queue, storage)?
-  → stacks/<name>/compose.yaml (new folder, add to compose.yaml includes)
+  → stacks/<name>/compose.yaml (new folder, add to stacks/compose.yaml includes)
 
 VS Code editor behavior or extension?
   → devcontainer.json → customizations.vscode block
@@ -55,7 +59,7 @@ the first "yes".
 | --- | --- | --- | --- |
 | 1 | Can the tool *only* load from the repo root, with no flag to point elsewhere? | Repo root | `Taskfile.yml`, `.gitattributes`, `.gitignore` |
 | 2 | Does it configure a linter, formatter, or the git hooks? | `.config/` | `lefthook.yml`, `markdownlint.jsonc`, `yamllint.yaml` |
-| 3 | Does it provision the container or its services? | `.devcontainer/` | `devcontainer.json`, `mise.toml`, `stacks/*/` |
+| 3 | Does it provision the container or its services? | `.devcontainer/` | `Dockerfile`, `devcontainer.json`, `mise.toml`, `stacks/` |
 | 4 | Does it enforce repo structure? | `.repo/` | The `repo` CLI and its policies |
 
 Why `.config/` is dotted: it is repo infrastructure, and it sits alongside the
@@ -79,7 +83,8 @@ See [`.config/README.md`](.config/README.md) for the per-file index, and
 
 | Category | Need | Canonical Location |
 | --- | --- | --- |
-| **Runtimes & Tools** | Anything with a Feature (Node, Python, Go, Java, Deno, bun, uv, gh, Task, ShellCheck) | `devcontainer.json` → `features` (pinned) |
+| **Runtimes & Tools** | Anything with a usable Feature (Node, Python, Go, Java, Deno, gh, ShellCheck, psql) | `devcontainer.json` → `features` (pinned) |
+| | Image-baked tools (bun, uv, Task, mise) | `.devcontainer/Dockerfile` → `ARG` (pinned) |
 | | CLIs with no Feature (Codex, Lefthook) | `.devcontainer/mise.toml` |
 | | Self-updating CLIs (Claude Code) | `scripts/lib/base-setup.sh` |
 | **Tooling** | Git hooks | `.config/lefthook.yml` |
@@ -99,7 +104,8 @@ See [`.config/README.md`](.config/README.md) for the per-file index, and
 | | Service credentials (dev-only) | `.devcontainer/.env` |
 | | Service profiles/toggles | `.devcontainer/.env` → `COMPOSE_PROFILES` |
 | | Secrets (API keys, tokens) | Host env forwarded via `remoteEnv` — never committed |
-| **Services** | Infrastructure services | `.devcontainer/stacks/<name>/compose.yaml` |
+| **Services** | Stack orchestrator (`include:` list) | `.devcontainer/stacks/compose.yaml` |
+| | Infrastructure services | `.devcontainer/stacks/<name>/compose.yaml` |
 | | Service enable/disable | `.devcontainer/.env` → `COMPOSE_PROFILES` |
 | | Service tuning/config | `.devcontainer/stacks/<name>/` (colocated) |
 | **Networking** | Port allocation (container-side) | `.devcontainer/stacks/<name>/compose.yaml` → `ports:` |
@@ -119,13 +125,23 @@ See [`.config/README.md`](.config/README.md) for the per-file index, and
 | | Codex CLI (pinned) | `.devcontainer/mise.toml` |
 | | AI CLI config persistence | `devcontainer.json` → `mounts` (named volumes) |
 | **Security** | Container capabilities | `devcontainer.json` → `capAdd` / `securityOpt` |
+| | Docker build context exclusions | `.devcontainer/.dockerignore` |
 | | Network binding | Compose files → all ports bound to `127.0.0.1` |
 
 ---
 
 ## Runtimes & Tools
 
-Tools land in one of three places. **Prefer a Feature** — if one exists, pin its version there.
+Tools land in one of four places. Ask these in order and stop at the first "yes".
+
+| # | Question | Home |
+| --- | --- | --- |
+| 1 | Is there a Feature, **and** does its installer avoid `api.github.com`? | `devcontainer.json` → `features` |
+| 2 | Is the Feature rate-limit-fragile, or must the tool exist before Features run? | `.devcontainer/Dockerfile` → an `ARG` pin |
+| 3 | No Feature, and only needed at runtime? | `.devcontainer/mise.toml` |
+| 4 | Does the tool update itself? | `scripts/lib/base-setup.sh` |
+
+**Prefer a Feature.** Tier 2 exists because of one specific, verified failure — not as a general escape hatch.
 
 ### 1. Tools with a Feature → `devcontainer.json`
 
@@ -142,7 +158,44 @@ Runtimes and any CLI that ships a devcontainer Feature are pinned in the `featur
 Comment out any tool you don't need (and its matching VS Code extension). Pin an exact version where the Feature
 supports it; a couple track a major line instead (`java: 17`, `postgresql-client: 16`).
 
-### 2. CLIs with no Feature → `.devcontainer/mise.toml`
+Before adding a third-party Feature, read its `install.sh`. If it delegates to
+`ghcr.io/devcontainers-extra/features/gh-release` (directly or via nanolayer), it belongs in tier 2 — see below.
+
+### 2. Image-baked tools → `.devcontainer/Dockerfile`
+
+`bun`, `uv`, `task` and `mise` are installed by the Dockerfile as pinned `ARG`s rather than by Features:
+
+```dockerfile
+ARG BUN_VERSION=1.3.14
+ARG UV_VERSION=0.11.28
+ARG TASK_VERSION=3.52.0
+ARG MISE_VERSION=v2026.8.6
+```
+
+The first three have Features, and those Features are the problem. All of them resolve release assets through
+nanolayer's `gh-release` helper, which lists a release's assets by calling `api.github.com` **with no credentials**.
+Codespaces build hosts and GitHub-hosted Actions runners share egress IP pools, so the 60 req/hr anonymous limit is
+routinely exhausted, the call 403s, and one failed Feature fails the entire image build — after which Codespaces
+drops you into a bare recovery container. Pinning the version does not help: the pin supplies the tag, but the asset
+listing still hits the API. `mise` is here for a different reason — it was previously an unpinned `curl | sh` in
+post-create, the only unpinned tool in a template that pins everything else.
+
+`repo toolchain check` enforces all of this: `TC-01` fails if one of those Features comes back, `TC-02` fails on a
+floating pin, and `TC-03` fails if `TASK_VERSION` drifts from CI's `arduino/setup-task` version.
+
+Two constraints on what can go here:
+
+- **Features layer *after* this stage**, so the Dockerfile cannot use anything a Feature provides. This is why
+  `mise install` stays in post-create — four of the six entries in `mise.toml` use the `npm:` and `pipx:` backends,
+  and Node and Python come from Features.
+- **Runtime identity is not the Dockerfile's job.** There is no `USER` instruction; `updateRemoteUserUID` expects
+  root at build time and `remoteUser` owns identity afterwards. Anything touching the named-volume mount points
+  (`~/.claude`, `~/.config/gh`, `~/.codex`) belongs in post-create.
+
+The build context is `.devcontainer/`, emptied by `.dockerignore` — the Dockerfile has no `COPY` instruction, and
+`.devcontainer/.env` must never reach the Docker daemon.
+
+### 3. CLIs with no Feature → `.devcontainer/mise.toml`
 
 npm-distributed CLIs like Codex and Lefthook have no Feature, so [mise](https://mise.jdx.dev) pins and installs them.
 Add a line under `[tools]`:
@@ -155,7 +208,7 @@ Add a line under `[tools]`:
 
 `mise install` runs in post-create; re-run it (or `task tools:install`) after editing.
 
-### 3. Self-updating CLIs → `scripts/lib/base-setup.sh`
+### 4. Self-updating CLIs → `scripts/lib/base-setup.sh`
 
 CLIs that manage their own updates (Claude Code) install via their native installer. Add a function and call it from `base_setup()`:
 
@@ -249,7 +302,7 @@ The template follows a three-state grammar:
 
 ### Enabling/Disabling Services
 
-All services are included in `compose.yaml`. Optional services are gated by Compose profiles:
+All services are included in `.devcontainer/stacks/compose.yaml`. Optional services are gated by Compose profiles:
 
 | Service | Profile | Always On? |
 | --- | --- | --- |
@@ -269,7 +322,8 @@ COMPOSE_PROFILES=redis,minio,observability
 ### Adding a New Service
 
 1. Create `stacks/myservice/compose.yaml`
-2. Add `- stacks/myservice/compose.yaml` to `compose.yaml` `include:`
+2. Add `- myservice/compose.yaml` to the `include:` list in `stacks/compose.yaml`
+   (paths are relative to that file)
 3. Optionally add `profiles: [myservice]` if it should be opt-in
 4. Add port forwarding in `devcontainer.json` → `forwardPorts` and `portsAttributes`
 5. Use `${VAR:-default}` for any credentials, and add them to `.env.example`
@@ -282,6 +336,7 @@ the stack folder (e.g. `./init`, `./config/...`):
 
 ```text
 stacks/
+  compose.yaml          The orchestrator: `include:` one line per stack
   postgres/
     compose.yaml
     init/               SQL init scripts (mounted at ./init)
@@ -289,6 +344,23 @@ stacks/
     compose.yaml
     config/             OTel, Grafana, Tempo, Loki configs (mounted at ./config)
 ```
+
+Relative paths inside a stack's `compose.yaml` resolve against *that file's* folder, not the orchestrator's, so a
+stack stays self-contained.
+
+### Why every caller passes `--env-file`
+
+Compose discovers `.env` in the project directory, which defaults to the folder holding the first `-f` file. The
+orchestrator lives in `stacks/` and `.env` lives in `.devcontainer/`, so that discovery does not reach it. Every
+caller — `scripts/startup.sh`, the MOTD, and CI — therefore names it explicitly:
+
+```bash
+docker compose --env-file .devcontainer/.env -f .devcontainer/stacks/compose.yaml up -d
+```
+
+Omitting it does not error. Every `${VAR:-default}` quietly takes its default and `COMPOSE_PROFILES` reads as empty,
+so all opt-in stacks silently vanish. The orchestrator also sets `name: musher-dev` explicitly, because Compose
+would otherwise derive the project name from the `stacks/` folder.
 
 ---
 
@@ -448,6 +520,7 @@ settings across container rebuilds.
     policies/__init__.py      The policy registry -- the only wiring a policy needs
     policies/config/          .config/ layout, index, and no shadowing root config
     policies/ports/           Port table ↔ forwardPorts ↔ compose parity
+    policies/toolchain/       Image-baked pins; banned rate-limit-fragile Features
     policies/hooks/           lefthook ↔ CI job parity
     policies/rulesets/        Branch rulesets ↔ CI job-name parity
 .github/
@@ -458,12 +531,14 @@ taskfiles/                    Task modules included by the root Taskfile.yml
 Taskfile.yml                  Task entry point (cannot move — root-only discovery)
 .gitattributes                Line-ending policy (`* text=auto eol=lf`)
 .devcontainer/
+  Dockerfile                  The image: bun, uv, task, mise as pinned ARGs
+  .dockerignore               Empties the build context (`*`); keeps .env off the daemon
   devcontainer.json           Features, extensions, settings, mounts, ports
-  mise.toml                   CLIs without a Feature (single source of tool versions)
-  compose.yaml                Stack orchestrator (includes stacks/<name>/compose.yaml)
+  mise.toml                   Runtime-only CLIs with no Feature
   .env.example                Environment template (copy to .env)
   .env                        Local overrides (gitignored)
-  stacks/                     One folder per stack: its compose.yaml + colocated config
+  stacks/                     The services, and the orchestrator that includes them
+    compose.yaml              Stack orchestrator (`include:` + `name: musher-dev`)
     postgres/
       compose.yaml             PostgreSQL with pgvector (always on)
       init/
@@ -490,6 +565,7 @@ Taskfile.yml                  Task entry point (cannot move — root-only discov
     initialize.sh             Host-side bootstrap (runs before docker run)
     post-create.sh            One-time setup entry point
     startup.sh                Every-start service launcher
+    verify-toolchain.sh       Asserts baked tools match the Dockerfile ARGs (CI)
     lib/
       base-setup.sh           Reusable tool installer (mise CLIs + Claude)
       common.sh               Shared utilities

@@ -6,8 +6,9 @@ need.
 
 ## What You Get
 
-- Ubuntu base with zsh/oh-my-zsh
-- Node, Python, Go, Java, Deno, bun, uv — pinned Features
+- Ubuntu 24.04 LTS base with zsh/oh-my-zsh
+- Node, Python, Go, Java, Deno — pinned Features
+- bun, uv, Task, mise — baked into the image by `.devcontainer/Dockerfile` (pinned `ARG`s)
 - Docker-in-Docker
 - Git + GitHub CLI
 - Claude Code + Codex CLI + Task runner + Lefthook
@@ -27,8 +28,9 @@ need.
 All local-dev state is contained under `.devcontainer/`. On first build, `initializeCommand` copies `.env.example` →
 `.env` (gitignored). The same file feeds:
 
-- **Docker Compose** — auto-discovered as the sibling `.env` next to `compose.yaml`, used to interpolate
-  `${VAR:-default}` references.
+- **Docker Compose** — passed explicitly as `--env-file .devcontainer/.env` by every caller, used to interpolate
+  `${VAR:-default}` references. It is not auto-discovered: the orchestrator lives at
+  `.devcontainer/stacks/compose.yaml` and `.env` is not its sibling.
 - **The dev container itself** — loaded via `runArgs --env-file`, so shells and runtimes inside the container see the
   same values.
 
@@ -49,18 +51,21 @@ The startup MOTD also warns about drift or unfilled required keys.
 ## Customize
 
 - Comment out unneeded features/extensions in `devcontainer.json`
-- Change a tool version → `devcontainer.json` (Features), or `.devcontainer/mise.toml` for CLIs without a Feature
-  (AI CLIs, lefthook, linters)
+- Change a tool version → `devcontainer.json` (Features), `.devcontainer/Dockerfile` (bun, uv, Task, mise), or
+  `.devcontainer/mise.toml` for runtime-only CLIs (AI CLIs, lefthook, linters). The four-tier rule is in
+  [CONFIGURATION.md](CONFIGURATION.md#runtimes--tools) and enforced by `repo toolchain check`.
 - Change a lint rule → the matching file in `.config/` (see [`.config/README.md`](.config/README.md))
 - Add project setup to `scripts/post-create.sh` (runs after `base_setup`)
-- Enable optional services via `COMPOSE_PROFILES` in `.devcontainer/.env` (redis, minio, registry, azimutt, observability)
+- Add or enable a service → `.devcontainer/stacks/` (one folder per stack, registered in `stacks/compose.yaml`);
+  toggle with `COMPOSE_PROFILES` in `.devcontainer/.env` (redis, minio, registry, azimutt, observability)
 - Full reference → [CONFIGURATION.md](CONFIGURATION.md)
 
 ## Included CI
 
 `.github/workflows/validate.yaml` runs seven jobs: ShellCheck, Compose config validation, devcontainer lockfile
-freshness, `.env` template sync, the lint gates, the repo structure policies, and a devcontainer build. Lint tool
-versions resolve from `.devcontainer/mise.toml` — the same file the container uses — so CI and local cannot drift.
+freshness, `.env` template sync, the lint gates, the repo structure policies, and a devcontainer build that also
+asserts the image-baked tools report their pinned versions. Lint tool versions resolve from
+`.devcontainer/mise.toml` — the same file the container uses — so CI and local cannot drift.
 
 The same lint and structure checks run pre-commit via [`.config/lefthook.yml`](.config/lefthook.yml), and
 `repo hooks check` fails the build if the two ever disagree.
@@ -75,8 +80,9 @@ will tell you why.
 
 ### CRLF / WSL line ending issues
 
-The `postCreateCommand` automatically strips `\r` from all scripts before running them. If you add new scripts, ensure
-they're under `.devcontainer/scripts/` to be included.
+`.gitattributes` (`* text=auto eol=lf`) normalizes every tracked file, so scripts arrive with LF on every platform
+and no fixup step is needed. The one exception is `.devcontainer/.env`, which is gitignored and therefore out of
+`.gitattributes`' reach — `scripts/initialize.sh` strips `\r` from it host-side before the container starts.
 
 ### Stale containers
 
