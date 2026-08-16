@@ -8,8 +8,6 @@
 # and tool verification functions used by all setup scripts.
 set -euo pipefail
 
-# --- Logging ---
-
 # Logs a timestamped message to stderr.
 #
 # Arguments:
@@ -105,8 +103,6 @@ setup_config_dirs() {
   done
 }
 
-# --- NVM helpers ---
-
 # Fixes NVM directory ownership to the current user.
 #
 # Globals:
@@ -120,8 +116,6 @@ fix_nvm_permissions() {
     maybe_sudo chown -R "$(id -un):$(id -gn)" "$nvm_dir"
   fi
 }
-
-# --- NPM install helper ---
 
 # Installs an npm package globally with retry logic.
 #

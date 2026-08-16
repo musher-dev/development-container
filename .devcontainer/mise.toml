@@ -1,20 +1,13 @@
-# Developer tools that have no devcontainer Feature.
+# Developer CLIs that have no devcontainer Feature and are only needed at
+# runtime. Tools with a Feature are pinned in devcontainer.json; bun, uv, task
+# and mise are baked by the Dockerfile.
+# Tier rules: CONFIGURATION.md → "Runtimes & Tools".
 #
-# Everything with a Feature is pinned in devcontainer.json (baked into the
-# image); the CLIs below are npm-distributed with no Feature, so mise installs
-# and version-pins them instead. Claude Code is the one other exception — it
-# self-updates via its native installer (scripts/lib/base-setup.sh).
+# This file is the single source of these versions: post-create runs
+# `mise install` against it, and CI resolves the same pins via jdx/mise-action.
+# Edit a version here, then `task tools:install`.
 #
-# Change a version here, then run `task tools:install`. Devcontainer post-create
-# runs `mise install` against this file. Docs: https://mise.jdx.dev
-# See CONFIGURATION.md → "Runtimes & Tools".
-
-# This file is the SINGLE source of tool versions. CI resolves the same pins
-# from here via jdx/mise-action (MISE_GLOBAL_CONFIG_FILE), so a version is
-# never stated twice and local and CI cannot drift.
-#
-# Backends are fully qualified (npm:, pipx:, aqua:) rather than short names so
-# resolution does not depend on mise's registry.
+# Backends are fully qualified so resolution does not depend on mise's registry.
 
 [tools]
 # --- AI + git hooks ------------------------------------------------------

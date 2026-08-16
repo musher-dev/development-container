@@ -1,28 +1,15 @@
-# Musher Dev Container — Docker Compose orchestrator.
+# Musher dev container — Docker Compose orchestrator.
 #
-# Each stack lives in its own folder next to this file (its compose.yaml plus
-# any config it needs); add a new folder and include its compose.yaml below.
-# Services run inside Docker-in-Docker, started by scripts/startup.sh.
+# One folder per stack, each holding its own compose.yaml plus any config it
+# needs. Services run inside Docker-in-Docker, started by scripts/startup.sh.
+# This is not the dev container itself — that is ../Dockerfile + ../devcontainer.json.
 #
-# This file is NOT the dev container. The dev container itself is defined by
-# ../Dockerfile + ../devcontainer.json; these are the supporting services it
-# brings up.
+# Every caller must pass `--env-file ../.env`: this file is not a sibling of
+# .env, so Compose's positional discovery does not reach it and every value
+# would silently fall back to its default. `name` is explicit for the same
+# reason — Compose would otherwise derive the project name from this folder.
 #
-# `name` is set explicitly because Compose otherwise derives the project name
-# from the project directory — which would silently become "stacks". Likewise
-# every caller must pass `--env-file ../.env`: this file is no longer a sibling
-# of .env, so Compose's positional auto-discovery does not reach it.
-#
-# Port Allocation:
-#   15432  PostgreSQL         15440  MinIO API (obs.)
-#   15433  Redis              15441  MinIO Console (obs.)
-#   15434  MinIO API          15442  Tempo
-#   15435  MinIO Console      15443  Loki
-#   15436  OCI Registry       15444  VictoriaMetrics
-#   15460  Azimutt            15445  OTel HTTP
-#                             15446  OTel gRPC
-#                             15447  Grafana
-#                             15448  Pyroscope
+# Ports: CONFIGURATION.md → "Port Allocation" (parity enforced by `repo ports check`).
 
 name: musher-dev
 

@@ -2,11 +2,8 @@
 // Uncomment optional blocks as needed. Comment out what you don't use.
 {
   "name": "Musher Dev",
-  // The image is defined by .devcontainer/Dockerfile, which bakes the tools
-  // whose Features cannot be relied on (see its header, and the "Runtimes &
-  // Tools" section of CONFIGURATION.md). Features below layer on top of it.
-  // Context is .devcontainer/ and is emptied by .dockerignore — there is no
-  // COPY instruction, and .env must never reach the daemon.
+  // Dockerfile bakes the tools whose Features cannot be relied on; the
+  // Features below layer on top of it. Context is emptied by .dockerignore.
   "build": {
     "dockerfile": "Dockerfile",
     "context": "."
@@ -15,11 +12,7 @@
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind,consistency=cached",
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
 
-  // Developer tools are pinned here as Features (baked into the image). Tools
-  // with no Feature — the Codex and Lefthook CLIs — live in
-  // .devcontainer/mise.toml; bun, uv, task and mise are baked by the Dockerfile;
-  // Claude Code self-updates via its native installer.
-  // See CONFIGURATION.md → "Runtimes & Tools" for which tier a tool belongs in.
+  // Which tier a tool belongs in: CONFIGURATION.md → "Runtimes & Tools".
   "features": {
     // --- Platform ---
     "ghcr.io/devcontainers/features/common-utils:2": {
@@ -42,13 +35,9 @@
       "installGradle": false,
       "installMaven": false
     },
-    // deno stays a Feature: its installer curls releases/download/... directly
-    // and never calls api.github.com. bun, uv and task are NOT here — do not
-    // re-add them. Their Features route through nanolayer's gh-release
-    // installer, which lists assets against api.github.com unauthenticated and
-    // fails the whole build once the shared-IP rate limit is hit. They are
-    // baked by .devcontainer/Dockerfile instead; enforced by TC-01 in
-    // .repo/governance/policies/toolchain/.
+    // deno is safe as a Feature; bun, uv and task are not — do not re-add
+    // them. They are baked by the Dockerfile (TC-01 fails the build if they
+    // reappear here). Why: CONFIGURATION.md → "Runtimes & Tools".
     "ghcr.io/devcontainers-extra/features/deno:1": { "version": "2.9.2" },
 
     // --- Linting ---
@@ -107,9 +96,8 @@
   },
 
   "remoteEnv": {
-    // mise shims (codex, lefthook) + ~/.local/bin (Claude Code) on PATH.
-    // mise, bun, uv and task are baked into /usr/local/bin by the Dockerfile
-    // and are already on the default PATH.
+    // mise shims (codex, lefthook) + ~/.local/bin (Claude Code). The baked
+    // tools live in /usr/local/bin and are already on PATH.
     "PATH": "/home/vscode/.local/share/mise/shims:/home/vscode/.local/bin:${containerEnv:PATH}"
   },
 

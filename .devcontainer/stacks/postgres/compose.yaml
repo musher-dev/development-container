@@ -1,5 +1,3 @@
-# PostgreSQL with pgvector extension.
-
 services:
   postgres:
     image: pgvector/pgvector:0.8.5-pg17

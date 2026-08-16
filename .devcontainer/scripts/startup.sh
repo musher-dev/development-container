@@ -41,11 +41,11 @@ trap 'on_error ${LINENO} "${BASH_COMMAND}"' ERR
 
 # Polls compose services until all report healthy or timeout elapses.
 #
-# Arguments:
-#   $1 — timeout in seconds (default: 60)
 # Globals:
 #   COMPOSE_FILE — read, path to stacks/compose.yaml
 #   ENV_FILE     — read, path to .env (passed to every compose invocation)
+# Arguments:
+#   $1 — timeout in seconds (default: 60)
 # Outputs:
 #   Writes progress/warnings to stderr via log()
 # Returns:
@@ -58,7 +58,6 @@ wait_for_healthy() {
     local output
     output="$(docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" ps --format json 2>/dev/null || true)"
 
-    # Detect failed services (exited, dead, or unhealthy)
     local failed=""
     failed="$(echo "$output" | grep -E '"(exited|dead|unhealthy)"' || true)"
     if [[ -n "$failed" ]]; then
@@ -74,7 +73,6 @@ wait_for_healthy() {
       return 1
     fi
 
-    # Count services still starting
     local starting
     starting="$(echo "$output" | grep -c '"starting"' || true)"
     if [[ "$starting" -eq 0 ]]; then

@@ -9,22 +9,13 @@ DOCS = "CONFIGURATION.md#runtimes--tools"
 DOCKERFILE = ".devcontainer/Dockerfile"
 DEVCONTAINER = ".devcontainer/devcontainer.json"
 
-#: The diagnosis behind TC-01, stated once. It is long on purpose: the whole
-#: point of moving these three tools into the Dockerfile is easy to mistake for
-#: fussiness, and the next person to reach for the Feature deserves the actual
-#: failure mode rather than "we don't do that here".
+#: The short form; the full diagnosis is in CONFIGURATION.md, which `docs` below
+#: points at.
 _WHY_NOT_A_FEATURE = (
-    "The devcontainers-extra Features for bun, uv and go-task all install via "
-    "nanolayer's gh-release helper, which lists a release's assets by calling "
-    "api.github.com with no credentials "
-    "(nanolayer/installers/gh_release/resolvers/asset_resolver.py). Codespaces "
-    "build hosts and GitHub-hosted Actions runners share egress IP pools, so "
-    "the 60 req/hr anonymous limit is routinely exhausted and the call 403s. "
-    "Pinning the version does not help -- the pin only supplies the tag; the "
-    "asset listing still hits the API. One failed Feature fails the entire "
-    "image build, and Codespaces then drops the developer into a bare recovery "
-    "container, so the symptom is 'task: command not found' rather than the "
-    "real error."
+    "The devcontainers-extra Features for bun, uv and go-task resolve release "
+    "assets through an unauthenticated api.github.com call. Codespaces and CI "
+    "share egress IPs, so that call is rate-limited, and one failed Feature "
+    "fails the entire image build. Pinning the version does not avoid the call."
 )
 
 

@@ -59,17 +59,14 @@ _motd_runtimes() {
   echo "  ${_BOLD}Runtimes${_RESET}"
   echo "  ${_DIM}${sep}${_RESET}"
 
-  # Row 1: node + python
   _motd_runtime_entry node "node" "node -v"
   _motd_runtime_entry python3 "python" "python3 -c 'import platform; print(platform.python_version())'"
   echo ""
 
-  # Row 2: go + java
   _motd_runtime_entry go "go" "go version | grep -oP '\\d+\\.\\d+\\.\\d+'"
   _motd_runtime_entry java "java" "java -version 2>&1 | head -1 | grep -oP '\\d+[\\d.]+'"
   echo ""
 
-  # Row 3: deno + bun
   _motd_runtime_entry deno "deno" "deno -v | head -1 | awk '{print \$2}'"
   _motd_runtime_entry bun "bun" "bun -v"
   echo ""
@@ -107,18 +104,15 @@ _motd_services() {
     state="$(echo "$line" | grep -oP '"State"\s*:\s*"\K[^"]+' | head -1)"
     health="$(echo "$line" | grep -oP '"Health"\s*:\s*"\K[^"]+' | head -1)"
 
-    # Extract published host port
     ports="$(echo "$line" | grep -oP '"PublishedPort"\s*:\s*\K\d+' | head -1)"
 
     [[ -z "$name" ]] && continue
 
-    # Build display name
     local display_name="$name"
     if [[ -n "$ports" ]] && [[ "$ports" != "0" ]]; then
       display_name="${name} (${ports})"
     fi
 
-    # Determine status label and color
     local status_label color
     if [[ -n "$health" ]] && [[ "$health" != "" ]]; then
       status_label="$health"

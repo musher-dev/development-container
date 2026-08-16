@@ -19,9 +19,9 @@ DEVCONTAINER = ".devcontainer/devcontainer.json"
 WORKFLOW = ".github/workflows/validate.yaml"
 
 #: Feature ref (without the version suffix) -> the tool it would install.
-#: Only Features whose installers were verified to call api.github.com belong
-#: here. deno, shellcheck and postgresql-client were checked and are clean:
-#: the first two curl releases/download/... directly, the third is apt.
+#: Only Features whose installers were read and confirmed to call
+#: api.github.com belong here; deno, shellcheck and postgresql-client were
+#: checked and are clean. See CONFIGURATION.md -> "Runtimes & Tools".
 BANNED_FEATURES = {
     "ghcr.io/devcontainers-extra/features/bun": "bun",
     "ghcr.io/devcontainers-extra/features/uv": "uv",

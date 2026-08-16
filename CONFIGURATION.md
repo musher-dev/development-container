@@ -173,15 +173,37 @@ ARG MISE_VERSION=v2026.8.6
 ```
 
 The first three have Features, and those Features are the problem. All of them resolve release assets through
-nanolayer's `gh-release` helper, which lists a release's assets by calling `api.github.com` **with no credentials**.
-Codespaces build hosts and GitHub-hosted Actions runners share egress IP pools, so the 60 req/hr anonymous limit is
-routinely exhausted, the call 403s, and one failed Feature fails the entire image build — after which Codespaces
-drops you into a bare recovery container. Pinning the version does not help: the pin supplies the tag, but the asset
-listing still hits the API. `mise` is here for a different reason — it was previously an unpinned `curl | sh` in
-post-create, the only unpinned tool in a template that pins everything else.
+nanolayer's `gh-release` helper, which lists a release's assets by calling `api.github.com` **with no credentials** —
+`nanolayer/installers/gh_release/resolvers/asset_resolver.py`:
+
+```python
+response = urllib.request.urlopen(
+    f"https://api.github.com/repos/{repo}/releases/tags/{tag}"
+)  # nosec
+```
+
+There is no `Authorization` header and no `GITHUB_TOKEN` read anywhere in that module. Codespaces build hosts and
+GitHub-hosted Actions runners share egress IP pools, so the 60 req/hr anonymous limit is routinely exhausted and the
+call 403s. One failed Feature fails the entire image build, after which Codespaces drops you into a bare recovery
+container — so the symptom a developer reports is `task: command not found`, not a rate limit.
+
+**Pinning the version does not help.** The pin only supplies the tag; `_get_release_assets()` still calls the API to
+*list* the assets. The build log reads `Using Bun version: bun-v1.3.14` and then 403s, which makes the failure look
+like a bad version pin when the pin was fine.
+
+`mise` is baked for a different reason — it was previously an unpinned `curl | sh` in post-create, the only unpinned
+tool in a template that pins everything else.
+
+**Features that were checked and cleared**, and stay Features: `devcontainers-extra/deno` and `lukewiwa/shellcheck`
+build a `releases/download/...` URL directly; `robbert229/postgresql-client` is apt. The rule is about the
+installer's behaviour, not the publisher — so read a third-party Feature's `install.sh` before adding it.
 
 `repo toolchain check` enforces all of this: `TC-01` fails if one of those Features comes back, `TC-02` fails on a
 floating pin, and `TC-03` fails if `TASK_VERSION` drifts from CI's `arduino/setup-task` version.
+
+Version assertions in the Dockerfile are presence-only (`test -x`). The pinned download URLs already guarantee the
+version — a wrong one 404s — and executing a binary in the layer that installed it is a known BuildKit hazard. The
+runtime assertion lives in `scripts/verify-toolchain.sh`, which CI runs against the built container.
 
 Two constraints on what can go here:
 
@@ -218,6 +240,42 @@ base_install_mytool() {
   log "Installing mytool..."
   retry 3 5 bash -c 'curl -fsSL https://mytool.dev/install.sh | bash'
 }
+```
+
+---
+
+## Comments
+
+This template is read before it is run, so its comments are part of the interface. Four rules, the first two
+enforced by `repo comments check`.
+
+**Comment the non-obvious.** The code states *what*; a comment earns its line by stating *why*. The test: could
+someone who has never seen this code write the comment just by reading the line below it? If so, delete it.
+
+**Write each rationale once, then reference it.** A decision explained at every call site is a decision that will
+disagree with itself within a release. The full account lives here in `CONFIGURATION.md`; code carries a one-line
+summary and a pointer. `repo comments check` (`CMT-03`) fails the build if a pointer stops resolving, so
+references are safe to rely on.
+
+**Keep file headers short.** A header says what the file is and the one constraint a reader must not violate.
+Depth goes here. Blocks over 20 lines fail `CMT-01` — the natural size in this repo is 4–8.
+
+**Library functions are the exception.** Every function in `.devcontainer/scripts/lib/` carries a full header, per
+the [Google Shell Style Guide](https://google.github.io/styleguide/shellguide.html): *"Any function in a library
+must have a function header comment regardless of length or complexity."* Tags go in Google's order — `Globals`,
+`Arguments`, `Outputs`, `Returns` — and annotate access mode (`— read`, `— modified (export)`).
+
+```bash
+# Polls compose services until all report healthy or timeout elapses.
+#
+# Globals:
+#   COMPOSE_FILE — read, path to stacks/compose.yaml
+# Arguments:
+#   $1 — timeout in seconds (default: 60)
+# Outputs:
+#   Writes progress/warnings to stderr via log()
+# Returns:
+#   0 when healthy or on timeout (non-fatal), 1 if services failed
 ```
 
 ---

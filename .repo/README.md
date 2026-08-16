@@ -44,24 +44,15 @@ runs `uv tool install ./.repo`). To reinstall after editing it:
 | `hooks` | `HOOK-01`..`HOOK-04` | Every lefthook job has a CI counterpart and vice versa, or a recorded reason why not |
 | `rulesets` | `RS-01`..`RS-04` | Committed branch rulesets stay valid and in step with the CI jobs they require |
 | `toolchain` | `TC-01`..`TC-03` | The tools the image bakes stay out of the Features block, keep exact pins, and stay in step with CI |
+| `comments` | `CMT-01`..`CMT-03` | Comment blocks stay short, the allowlist stays honest, and every `docs:` pointer still resolves |
 
 ### Why `toolchain` exists
 
-`TC-01` is the policy least likely to be guessed from the code it guards. bun,
-uv and task are installed by [`.devcontainer/Dockerfile`](../.devcontainer/Dockerfile)
-rather than by their `devcontainers-extra` Features, because those Features
-resolve release assets through nanolayer, which calls `api.github.com` with no
-credentials. On Codespaces build hosts and GitHub-hosted runners — which share
-egress IP pools — that hits the 60 req/hr anonymous limit, and one failed
-Feature fails the whole image build. Pinning the version does not avoid the
-call. Re-adding any of the three looks like a harmless simplification, which is
-exactly why it is a check and not a comment. The full diagnosis is in
-[`policies/toolchain/violations.py`](governance/policies/toolchain/violations.py).
-
-`BANNED_FEATURES` in [`policies/toolchain/check.py`](governance/policies/toolchain/check.py)
-lists only Features whose installers were read and confirmed to make that call.
-`deno`, `shellcheck` and `postgresql-client` were checked and are clean, so they
-stay Features — the rule is about the installer's behaviour, not the publisher.
+`TC-01` is the policy least likely to be guessed from the code it guards: bun, uv and
+task are installed by [`.devcontainer/Dockerfile`](../.devcontainer/Dockerfile) rather
+than by their Features, because those Features fail on rate-limited build hosts.
+Re-adding one looks like a harmless simplification, which is exactly why it is a check.
+Full account: [`CONFIGURATION.md`](../CONFIGURATION.md) → "Runtimes & Tools".
 
 ### The one-way-check tables
 

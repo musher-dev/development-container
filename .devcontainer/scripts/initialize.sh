@@ -1,25 +1,18 @@
 #!/usr/bin/env bash
 # initialize.sh — Host-side bootstrap for the dev container.
 #
-# Runs on the host (via devcontainer.json `initializeCommand`) BEFORE
-# `docker run` is invoked. Because `runArgs --env-file` is evaluated at
-# `docker run` time, the .env file must exist on the host before the
-# container starts — that's why this work lives here, not in
-# post-create.sh.
+# Runs on the host via `initializeCommand`, before `docker run` — it has to,
+# because `runArgs --env-file` is evaluated at `docker run` time, so .env must
+# already exist. post-create.sh would be too late.
 #
-# Responsibilities:
-#   * Create .devcontainer/.env from .env.example on first clone.
-#   * Touch an empty .env if no example exists, so --env-file never hard-fails.
-#   * Strip CRLF from .env (Windows/WSL safety — docker --env-file
-#     rejects files with CRLF line endings).
-#
-# Why this CRLF guard survives while the postCreateCommand one did not:
-# .gitattributes (`* text=auto eol=lf`) normalizes every file Git checks
-# out, which covers scripts/ and made the old `fix-crlf` step redundant.
-# It cannot cover .env — that file is gitignored, generated locally, and
-# hand-edited, so a Windows editor can reintroduce CR at any time.
+# The CRLF guard here is not redundant with .gitattributes. That normalizes
+# every file Git checks out, which is why the old postCreate fix-crlf step
+# could go; it cannot reach .env, which is gitignored, generated locally and
+# hand-edited, so a Windows editor can reintroduce CR at any time. Docker
+# rejects an --env-file containing CRLF.
 #
 # Idempotent: safe to run on every container start.
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
