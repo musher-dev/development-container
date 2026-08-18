@@ -61,17 +61,17 @@ pre-commit:
 
     - name: markdown
       glob: "*.md"
-      run: markdownlint-cli2 --config .config/markdownlint.jsonc {staged_files}
+      run: markdownlint-cli2 --config .config/markdown/markdownlint.jsonc {staged_files}
       fail_text: "Markdown lint failed. Run 'task lint:md:fix', then re-stage."
 
     - name: yaml
       glob: "*.{yml,yaml}"
-      run: yamllint -c .config/yamllint.yaml {staged_files}
-      fail_text: "YAML lint failed. See .config/yamllint.yaml for the active rules."
+      run: yamllint -c .config/yaml/yamllint.yaml {staged_files}
+      fail_text: "YAML lint failed. See .config/yaml/yamllint.yaml for the active rules."
 
     - name: actions
       glob: ".github/workflows/*.{yml,yaml}"
-      run: actionlint -config-file .config/actionlint.yaml {staged_files}
+      run: actionlint -config-file .config/actions/actionlint.yaml {staged_files}
       fail_text: "Workflow lint failed. Run 'task lint:actions' for the full output."
 
     - name: governance
@@ -83,7 +83,7 @@ pre-commit:
 
     - name: spelling
       # No glob: a typo can land in any file type.
-      run: codespell --config .config/codespell.cfg {staged_files}
+      run: codespell --config .config/spelling/codespell.cfg {staged_files}
       fail_text: >-
         Spelling check failed. Run 'task lint:spelling:fix' and review the
-        diff, or add a justified entry to .config/codespell.cfg.
+        diff, or add a justified entry to .config/spelling/codespell.cfg.

@@ -13,10 +13,10 @@ Policy and rationale: [`CONFIGURATION.md`](../CONFIGURATION.md). Enforcement:
 | --- | --- | --- |
 | `lefthook.yml` | lefthook | **Auto-discovered.** Lefthook searches `.config/lefthook.*` natively |
 | `lefthook-local.yml` | lefthook | Auto-discovered and merged. Gitignored; personal overrides only |
-| `markdownlint.jsonc` | markdownlint-cli2 | `--config .config/markdownlint.jsonc` |
-| `yamllint.yaml` | yamllint | `-c .config/yamllint.yaml` |
-| `actionlint.yaml` | actionlint | `-config-file .config/actionlint.yaml` |
-| `codespell.cfg` | codespell | `--config .config/codespell.cfg` |
+| `markdown/markdownlint.jsonc` | markdownlint-cli2 | `--config .config/markdown/markdownlint.jsonc` |
+| `yaml/yamllint.yaml` | yamllint | `-c .config/yaml/yamllint.yaml` |
+| `actions/actionlint.yaml` | actionlint | `-config-file .config/actions/actionlint.yaml` |
+| `spelling/codespell.cfg` | codespell | `--config .config/spelling/codespell.cfg` |
 
 Call sites are [`taskfiles/lint.Taskfile.yml`](../taskfiles/lint.Taskfile.yml)
 and [`.github/workflows/validate.yaml`](../.github/workflows/validate.yaml).
@@ -26,9 +26,11 @@ from that same file via `jdx/mise-action`.
 
 ## Rules
 
-1. **Flat.** `.config/<tool>.<ext>`. Create a `.config/<tool>/` subdirectory
-   only when a tool genuinely owns several files (a style directory, a custom
-   dictionary set). One file per tool needs no folder.
+1. **Bucket by concern.** `.config/<concern>/<tool>.<ext>`. A one-file bucket
+   is fine and collects siblings over time (`markdown/` gains a Vale config,
+   `security/` a gitleaks one). The single exception is `lefthook.yml`, which
+   sits at the top level because lefthook's config search does not descend
+   past `.config/lefthook.*` — bucketing it would silently stop every hook.
 2. **No leading dot on filenames.** The directory is already dotted; a second
    dot adds nothing.
 3. **Pass the path explicitly.** Except for lefthook, which finds this
@@ -40,6 +42,8 @@ from that same file via `jdx/mise-action`.
    above.
 5. **Every ignore needs a reason.** Suppressions, allowlists, and disabled
    rules carry an inline comment explaining why the exception is acceptable.
+6. **Configuration only.** No executables. A build asset belongs beside what
+   builds it; a repo-level runner belongs in `.repo/governance/`.
 
 ## What does *not* live here
 

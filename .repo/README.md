@@ -39,7 +39,7 @@ runs `uv tool install ./.repo`). To reinstall after editing it:
 
 | Policy | Codes | Enforces |
 | --- | --- | --- |
-| `config` | `CFG-01`..`CFG-07` | Tool config lives in `.config/`, every file is indexed and has a caller, nothing at the root shadows it |
+| `config` | `CFG-01`..`CFG-08` | Tool config lives in `.config/<concern>/` buckets, every file is indexed and has a caller, nothing at the root shadows it, no executables |
 | `ports` | `PORT-01`..`PORT-05` | The port table, `forwardPorts`/`portsAttributes`, and compose published ports all agree and stay in the reserved range |
 | `hooks` | `HOOK-01`..`HOOK-04` | Every lefthook job has a CI counterpart and vice versa, or a recorded reason why not |
 | `rulesets` | `RS-01`..`RS-04` | Committed branch rulesets stay valid and in step with the CI jobs they require |
