@@ -13,7 +13,7 @@ point at another path (Task)?
   → repo root. No alternative — these are orchestration entry points.
 
 Does it configure a linter, formatter, or the git hooks?
-  → .config/<tool>.<ext>
+  → .config/<concern>/<tool>.<ext> (lefthook.yml stays at .config/ top level)
 
 Does it provision the container itself?
   → .devcontainer/ (see the branches below)
@@ -58,7 +58,7 @@ the first "yes".
 | # | Question | Home | Examples |
 | --- | --- | --- | --- |
 | 1 | Can the tool *only* load from the repo root, with no flag to point elsewhere? | Repo root | `Taskfile.yml`, `.gitattributes`, `.gitignore` |
-| 2 | Does it configure a linter, formatter, or the git hooks? | `.config/` | `lefthook.yml`, `markdownlint.jsonc`, `yamllint.yaml` |
+| 2 | Does it configure a linter, formatter, or the git hooks? | `.config/<concern>/` | `markdown/markdownlint.jsonc`, `yaml/yamllint.yaml` (`lefthook.yml` top-level) |
 | 3 | Does it provision the container or its services? | `.devcontainer/` | `Dockerfile`, `devcontainer.json`, `mise.toml`, `stacks/` |
 | 4 | Does it enforce repo structure? | `.repo/` | The `repo` CLI and its policies |
 
@@ -67,8 +67,12 @@ other infrastructure directories this repo already has — `.devcontainer/`,
 `.github/`, `.repo/`. What is visible at the root is content you edit; what is
 dotted is machinery that operates on it.
 
-Two rules make the `.config/` home hold:
+Three rules make the `.config/` home hold:
 
+- **Bucket by concern.** `.config/<concern>/<tool>.<ext>` — a one-file bucket
+  is fine and collects siblings over time. The single exception is
+  `lefthook.yml`, which sits at the top level because lefthook's config search
+  does not descend past `.config/lefthook.*`.
 - **Pass the config path explicitly.** Every caller names its config with the
   tool's own flag (`--config`, `-c`, `-config-file`). The single exception is
   lefthook, which searches `.config/` natively. Relying on default discovery is
@@ -88,10 +92,10 @@ See [`.config/README.md`](.config/README.md) for the per-file index, and
 | | CLIs with no Feature (Codex, Lefthook) | `.devcontainer/mise.toml` |
 | | Self-updating CLIs (Claude Code) | `scripts/lib/base-setup.sh` |
 | **Tooling** | Git hooks | `.config/lefthook.yml` |
-| | Markdown lint rules | `.config/markdownlint.jsonc` |
-| | YAML lint rules | `.config/yamllint.yaml` |
-| | GitHub Actions lint rules | `.config/actionlint.yaml` |
-| | Spelling dictionary / ignores | `.config/codespell.cfg` |
+| | Markdown lint rules | `.config/markdown/markdownlint.jsonc` |
+| | YAML lint rules | `.config/yaml/yamllint.yaml` |
+| | GitHub Actions lint rules | `.config/actions/actionlint.yaml` |
+| | Spelling dictionary / ignores | `.config/spelling/codespell.cfg` |
 | | Task automation for the template | `Taskfile.yml` + `taskfiles/<name>.Taskfile.yml` |
 | | Repo structure policies | `.repo/governance/policies/` |
 | **Editor** | VS Code settings (formatters, rulers, whitespace) | `devcontainer.json` → `customizations.vscode.settings` |
@@ -562,12 +566,12 @@ settings across container rebuilds.
 ```text
 .config/                      Tool configuration (see "Where configuration lives")
   README.md                   Index: every file, its tool, and how it is reached
-  lefthook.yml                Git hooks (auto-discovered by lefthook)
+  lefthook.yml                Git hooks (top-level: lefthook's search stops at .config/lefthook.*)
   lefthook-local.yml          Personal hook overrides (gitignored, auto-merged)
-  markdownlint.jsonc          Markdown rules      (--config)
-  yamllint.yaml               YAML rules          (--config)
-  actionlint.yaml             Workflow rules      (-config-file)
-  codespell.cfg               Spelling            (--config)
+  markdown/markdownlint.jsonc Markdown rules      (--config)
+  yaml/yamllint.yaml          YAML rules          (--config)
+  actions/actionlint.yaml     Workflow rules      (-config-file)
+  spelling/codespell.cfg      Spelling            (--config)
 .repo/                        Repo governance toolchain (the `repo` CLI)
   README.md                   What each policy enforces, and why
   pyproject.toml              uv project; declares the `repo` console-script

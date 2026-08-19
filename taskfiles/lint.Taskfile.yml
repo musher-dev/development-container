@@ -8,10 +8,10 @@ version: '3'
 # Policy: CONFIGURATION.md → "Where Configuration Lives".
 
 vars:
-  MD_CONFIG: .config/markdownlint.jsonc
-  YAML_CONFIG: .config/yamllint.yaml
-  ACTIONLINT_CONFIG: .config/actionlint.yaml
-  CODESPELL_CONFIG: .config/codespell.cfg
+  MD_CONFIG: .config/markdown/markdownlint.jsonc
+  YAML_CONFIG: .config/yaml/yamllint.yaml
+  ACTIONLINT_CONFIG: .config/actions/actionlint.yaml
+  CODESPELL_CONFIG: .config/spelling/codespell.cfg
   # Directories that contain YAML this repo owns.
   YAML_PATHS: .github .devcontainer .config taskfiles Taskfile.yml
 
@@ -25,7 +25,7 @@ tasks:
       - task: spelling
 
   md:
-    desc: Lint Markdown against .config/markdownlint.jsonc.
+    desc: Lint Markdown against .config/markdown/markdownlint.jsonc.
     cmds:
       - markdownlint-cli2 --config {{.MD_CONFIG}} "**/*.md" "#node_modules" "#.repo/.venv"
 
@@ -35,17 +35,17 @@ tasks:
       - markdownlint-cli2 --config {{.MD_CONFIG}} --fix "**/*.md" "#node_modules" "#.repo/.venv"
 
   yaml:
-    desc: Lint YAML against .config/yamllint.yaml.
+    desc: Lint YAML against .config/yaml/yamllint.yaml.
     cmds:
       - yamllint -c {{.YAML_CONFIG}} {{.YAML_PATHS}}
 
   actions:
-    desc: Lint GitHub Actions workflows against .config/actionlint.yaml.
+    desc: Lint GitHub Actions workflows against .config/actions/actionlint.yaml.
     cmds:
       - actionlint -config-file {{.ACTIONLINT_CONFIG}}
 
   spelling:
-    desc: Spellcheck the repo against .config/codespell.cfg.
+    desc: Spellcheck the repo against .config/spelling/codespell.cfg.
     cmds:
       - codespell --config {{.CODESPELL_CONFIG}} .
 
