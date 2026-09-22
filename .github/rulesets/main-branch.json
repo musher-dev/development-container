@@ -39,7 +39,6 @@
           { "context": "ShellCheck", "integration_id": 15368 },
           { "context": "Compose Config", "integration_id": 15368 },
           { "context": "Devcontainer Lockfile", "integration_id": 15368 },
-          { "context": "Env Template Sync", "integration_id": 15368 },
           { "context": "Lint", "integration_id": 15368 },
           { "context": "Repo Structure", "integration_id": 15368 },
           { "context": "Devcontainer Build", "integration_id": 15368 }

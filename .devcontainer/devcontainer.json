@@ -77,6 +77,14 @@
     // "source=musher-${devcontainerId}-target,target=/workspaces/${localWorkspaceFolderBasename}/<product>/target,type=volume"
   ],
 
+  // Codespaces prompts for these at creation time. The block must list exactly
+  // the bindings declaring `source: host` in env.schema.yaml -- ENV-06 checks
+  // it, and initialize.sh fills the same keys from the host environment when
+  // you build locally.
+  // "secrets": {
+  //   "EXAMPLE_API_KEY": { "description": "...", "documentationUrl": "https://..." }
+  // },
+
   "containerEnv": {
     // Point mise at the workspace manifest (it lives under .devcontainer/, not
     // the repo root) and auto-trust it so `mise install` runs without a prompt.

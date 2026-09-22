@@ -11,6 +11,12 @@
 # hand-edited, so a Windows editor can reintroduce CR at any time. Docker
 # rejects an --env-file containing CRLF.
 #
+# The env template is generated from .devcontainer/env.schema.yaml, but this
+# hook stays pure bash: it runs on the host, where only bash is guaranteed --
+# no Python, no yq. Everything schema-shaped happens in the container instead
+# (`repo env sync` in post-create). See CONFIGURATION.md → "Environment
+# Variables".
+#
 # Idempotent: safe to run on every container start.
 
 set -euo pipefail
@@ -48,9 +54,49 @@ strip_crlf() {
   fi
 }
 
+# Fills keys the schema marks `source: host` from the host's environment.
+#
+# The generated template puts a `# @host` marker on the line before such a
+# key, which is the whole interface: no YAML parsing on the host. Only empty
+# keys are filled, so a value already in .env always wins.
+#
+# Globals:
+#   ENV_FILE — modified
+# Outputs:
+#   Writes progress to stderr via log()
+fill_from_host() {
+  [[ -f "${ENV_FILE}" ]] || return 0
+  grep -q '^# @host$' "${ENV_FILE}" || return 0
+
+  local tmp marked=0 filled=0 key
+  tmp="$(mktemp)"
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    if [[ "${line}" == "# @host" ]]; then
+      marked=1
+      printf '%s\n' "${line}"
+      continue
+    fi
+    if [[ ${marked} -eq 1 && "${line}" =~ ^([A-Z][A-Z0-9_]*)=$ ]]; then
+      key="${BASH_REMATCH[1]}"
+      if [[ -n "${!key-}" ]]; then
+        printf '%s=%s\n' "${key}" "${!key}"
+        filled=$((filled + 1))
+        marked=0
+        continue
+      fi
+    fi
+    marked=0
+    printf '%s\n' "${line}"
+  done < "${ENV_FILE}" > "${tmp}"
+  mv "${tmp}" "${ENV_FILE}"
+  [[ ${filled} -gt 0 ]] && log "Filled ${filled} host-sourced value(s) into .devcontainer/.env"
+  return 0
+}
+
 main() {
   ensure_env_file
   strip_crlf
+  fill_from_host
 }
 
 main "$@"

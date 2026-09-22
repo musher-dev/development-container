@@ -126,10 +126,21 @@ task repo:test             # uv run --project .repo --group dev pytest .repo/tes
    wiring; `cli.py` never names an individual policy.
 4. Add a row to the table above, and a test under `tests/` for every code.
 
-## Not yet folded in
+## The `env` group
 
-Env-template parity (`.env` versus `.env.example`) stays in
-`.devcontainer/scripts/lib/env-check.sh`. It already has three consumers — the
-`env:*` tasks, the startup MOTD, and CI — and reimplementing it here would
-duplicate the logic and put the MOTD path at risk. Consolidating it is a
-reasonable future change; doing it as part of introducing `.repo/` was not.
+`env` is the one policy with developer commands beside its check, because the
+schema it validates is also what renders `.devcontainer/.env.example` and what
+tells a developer which values are still missing:
+
+```bash
+repo env check     # policy: shape, rendering freshness, compose parity (CI)
+repo env doctor    # local: what the enabled stacks still need
+repo env setup     # local: fill it in, interactively
+repo env sync      # local: add new bindings, mint local secrets
+repo env render    # local: rewrite .env.example from the schema
+```
+
+The check half is blocking and reads only tracked files. The other four read
+the developer's gitignored `.env`, so they are never part of `repo check`.
+This is also what retired `.devcontainer/scripts/lib/env-check.sh`, whose
+parity job ENV-02 now does from the schema.

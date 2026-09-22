@@ -20,12 +20,12 @@ need.
 1. Click **Use this template** → **Create a new repository** on GitHub
 2. Clone your new repo and open in VS Code
 3. **Command Palette** → **Dev Containers: Reopen in Container**
-4. *(Optional)* Edit `.devcontainer/.env` to set `COMPOSE_PROFILES` and override credentials — the file is created
-   automatically from `.env.example` on first build.
+4. *(Optional)* Run `task env:setup` to choose which stacks start and fill in any values they need.
 
 ## Local Environment
 
-All local-dev state is contained under `.devcontainer/`. On first build, `initializeCommand` copies `.env.example` →
+Every variable the dev environment reads is declared in `.devcontainer/env.schema.yaml`. `.env.example` is generated
+from it (`task env:render`; CI fails on drift), and on first build `initializeCommand` copies that rendering to
 `.env` (gitignored). The same file feeds:
 
 - **Docker Compose** — passed explicitly as `--env-file .devcontainer/.env` by every caller, used to interpolate
@@ -34,19 +34,23 @@ All local-dev state is contained under `.devcontainer/`. On first build, `initia
 - **The dev container itself** — loaded via `runArgs --env-file`, so shells and runtimes inside the container see the
   same values.
 
-To reset local env state, delete `.devcontainer/.env` and rebuild. Useful task commands:
+A missing value never blocks the container — it blocks the stack that needs it, and only while that stack's profile is
+enabled. Useful task commands:
 
 | Command | Purpose |
 | --- | --- |
-| `task env:check` | Verify `.env` has every key from `.env.example`. |
-| `task env:required` | List required keys (declared empty in the template) that still need a value. |
-| `task env:diff` | Show keys present in one of `.env` / `.env.example` but not the other. |
+| `task env:setup` | Fill in what is missing, interactively (menus for stack choices, masked secrets). |
+| `task env:doctor` | Report what the enabled stacks still need, and which ones will be skipped. |
+| `task env:sync` | Add bindings the schema has gained; never overwrites a value you set. |
+| `task env:render` | Regenerate `.env.example` after editing the schema. |
 | `task env:reset` | Re-copy the template over `.env` (prompts before overwriting). |
+| `task stacks:restart` | Bring the stacks up to match the current `.env`. |
 | `task lint:all` | Run every lint gate (Markdown, YAML, workflows, spelling). |
 | `task repo:check` | Check the repo's own structure policies. |
 | `task tools:install` | Install every pinned CLI from `.devcontainer/mise.toml`. |
 
-The startup MOTD also warns about drift or unfilled required keys.
+The startup MOTD repeats anything still outstanding, and the shell profile reloads `.env` so an edited value reaches
+new terminals without a rebuild.
 
 ## Customize
 
@@ -64,8 +68,8 @@ The startup MOTD also warns about drift or unfilled required keys.
 
 ## Included CI
 
-`.github/workflows/validate.yaml` runs seven jobs: ShellCheck, Compose config validation, devcontainer lockfile
-freshness, `.env` template sync, the lint gates, the repo structure policies, and a devcontainer build that also
+`.github/workflows/validate.yaml` runs six jobs: ShellCheck, Compose config validation, devcontainer lockfile
+freshness, the lint gates, the repo structure policies (plus their tests), and a devcontainer build that also
 asserts the image-baked tools report their pinned versions. Lint tool versions resolve from
 `.devcontainer/mise.toml` — the same file the container uses — so CI and local cannot drift.
 

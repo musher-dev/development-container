@@ -45,7 +45,7 @@ VS Code editor behavior or extension?
   → devcontainer.json → customizations.vscode block
 
 Credential or per-developer toggle?
-  → .devcontainer/.env (auto-created from .env.example on first build)
+  → declare it in .devcontainer/env.schema.yaml (.env.example is generated)
 
 Service-internal configuration (tuning, pipelines)?
   → stacks/<name>/ (colocated with that stack's compose.yaml)
@@ -113,8 +113,8 @@ See [`.config/README.md`](.config/README.md) for the per-file index, and
 | | Git config | Host `.gitconfig` (auto-forwarded by devcontainers) |
 | **Environment** | Runtime behavior vars (`PYTHONUNBUFFERED`, etc.) | `devcontainer.json` → `containerEnv` |
 | | PATH extensions | `devcontainer.json` → `remoteEnv` |
-| | Service credentials (dev-only) | `.devcontainer/.env` |
-| | Service profiles/toggles | `.devcontainer/.env` → `COMPOSE_PROFILES` |
+| | Service credentials (dev-only) | `.devcontainer/env.schema.yaml` → rendered to `.env.example`, copied to `.env` |
+| | Service profiles/toggles | `COMPOSE_PROFILES` (set it with `task env:setup`) |
 | | Secrets (API keys, tokens) | Host env forwarded via `remoteEnv` — never committed |
 | **Services** | Stack orchestrator (`include:` list) | `.devcontainer/stacks/compose.yaml` |
 | | Infrastructure services | `.devcontainer/stacks/<name>/compose.yaml` |
@@ -351,20 +351,50 @@ Never commit secrets. Forward them from your host environment:
 }
 ```
 
-### Service Credentials
+### The schema is the source of truth
 
-Dev-only credentials live in `.devcontainer/.env` (gitignored). The host-side `initializeCommand`
-(`scripts/initialize.sh`) copies `.env.example` → `.env` on first build, so `runArgs --env-file` has a valid file to
-load. The same file is also auto-discovered by Docker Compose. To reset, delete `.devcontainer/.env` and rebuild — or
-run `task env:reset`.
+Every variable the dev environment reads is declared in
+[`.devcontainer/env.schema.yaml`](.devcontainer/env.schema.yaml). `.env.example` is **generated** from it
+(`task env:render`), and `repo env check` fails the build when the two disagree. Edit the schema, never the rendering.
 
-The template follows a three-state grammar:
+The product's own runtime contract is a *different* schema, at `<product>/env.schema.yaml` — see
+[LAYOUT.md](LAYOUT.md#the-env-contract) for why they sit at different levels.
 
-| State | Syntax | Meaning |
-| --- | --- | --- |
-| Filled default | `VAR=value` | Safe demo value; override only if you need something different. |
-| Required (empty) | `VAR=` | Must be filled in; the MOTD warns at container start until set. |
-| Optional override | `# VAR=value` | Uncomment to enable. |
+```yaml
+bindings:
+  MINIO_ROOT_PASSWORD:
+    type: string
+    local_default: minioadmin     # → `MINIO_ROOT_PASSWORD=minioadmin`
+    sensitivity: internal         # public | internal | secret
+    consumers: [minio]            # only required when the minio stack runs
+    description: Root password of the project MinIO stack. Dev-only.
+```
+
+| Field | Effect |
+| --- | --- |
+| `local_default` | Rendered live: `VAR=value`. A `secret` may only carry an empty or loopback value (`ENV-07`). |
+| `required: true` | Rendered empty: `VAR=`. `repo env doctor` asks for it. |
+| neither | Rendered commented: `# VAR=<default>` — an offer, not a value. |
+| `consumers: [<stack>]` | Requiredness follows the enabled `COMPOSE_PROFILES`. Checked against the stack's compose file (`ENV-03`). |
+| `source: host` | Filled from the host environment by `initialize.sh`, and mirrored into `secrets` so Codespaces prompts (`ENV-06`). |
+| `local_generate: hex:32` | Minted per developer by `repo env sync`, never committed. |
+| `mirrored_in: [...]` | Configs that repeat the value literally (Tempo, Loki) must agree (`ENV-05`). |
+
+### Filling it in
+
+The container always starts. What does not start is the stack whose value is missing:
+
+| Command | Purpose |
+| --- | --- |
+| `task env:setup` | Interactive fill — asks only for what is missing or invalid, masks secrets, offers menus |
+| `task env:doctor` | What the *enabled* stacks still need, and which ones will be skipped |
+| `task env:sync` | Adds bindings the schema has gained, mints local secrets; never overwrites a value |
+| `task env:render` | Regenerates `.env.example` after a schema change |
+| `task env:reset` | Re-copies the template over `.env` (destroys local values) |
+
+`startup.sh` skips a stack whose required values are missing and says so; the MOTD repeats it on every shell. Because
+`runArgs --env-file` reads `.env` once at `docker run` time, the shell profile re-loads the file (`lib/env-load.sh`)
+so an edited value reaches new terminals without a rebuild.
 
 ---
 
@@ -615,7 +645,8 @@ Taskfile.yml                  Task entry point (cannot move — root-only discov
   .dockerignore               Empties the build context (`*`); keeps .env off the daemon
   devcontainer.json           Features, extensions, settings, mounts, ports
   mise.toml                   Runtime-only CLIs with no Feature
-  .env.example                Environment template (copy to .env)
+  env.schema.yaml             Dev-environment contract -- the source of truth
+  .env.example                GENERATED from the schema by `task env:render`
   .env                        Local overrides (gitignored)
   stacks/                     The services, and the orchestrator that includes them
     compose.yaml              Stack orchestrator (`include:` + `name: musher-dev`)
@@ -649,6 +680,6 @@ Taskfile.yml                  Task entry point (cannot move — root-only discov
     lib/
       base-setup.sh           Reusable tool installer (mise CLIs + Claude)
       common.sh               Shared utilities
-      env-check.sh            .env / .env.example drift detection
+      env-load.sh             Exports .env into a shell without sourcing it
       motd.sh                 Startup MOTD renderer
 ```

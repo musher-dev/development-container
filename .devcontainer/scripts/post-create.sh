@@ -29,6 +29,39 @@ on_error() {
 }
 trap 'on_error ${LINENO} "${BASH_COMMAND}"' ERR
 
+# Brings .devcontainer/.env up to date with the schema, and wires the shell
+# profiles to load it.
+#
+# `repo env sync` only adds bindings the schema has gained and mints local
+# secrets -- it never overwrites a live value, so it is safe on every create.
+# The profile line is what makes an edited .env reach new terminals without a
+# rebuild; see lib/env-load.sh for why it parses rather than sources.
+#
+# Globals:
+#   SCRIPT_DIR — read
+# Outputs:
+#   Writes progress to stderr via log()
+setup_env_file() {
+  local loader="${SCRIPT_DIR}/lib/env-load.sh"
+  local marker="# musher devcontainer env (post-create)"
+
+  if has_cmd repo; then
+    log "Syncing .devcontainer/.env with the schema..."
+    (cd "${SCRIPT_DIR}/../.." && repo env sync) || log "WARNING: repo env sync failed"
+  fi
+
+  local rc
+  for rc in "${HOME}/.zshrc" "${HOME}/.bashrc"; do
+    [[ -f "${rc}" ]] || continue
+    grep -qF "${marker}" "${rc}" && continue
+    {
+      echo ""
+      echo "${marker}"
+      echo "[ -f \"${loader}\" ] && . \"${loader}\" && env_load"
+    } >> "${rc}"
+  done
+}
+
 # Installs lefthook git hooks for this repo. Best-effort: silently
 # skips if lefthook isn't on PATH yet or no lefthook.yml exists.
 #
@@ -50,6 +83,7 @@ install_lefthook_hooks() {
 main() {
   log "Starting post-create setup..."
   base_setup
+  setup_env_file
   install_lefthook_hooks
   # --- Add repo-specific setup below ---
   log "Post-create setup completed"

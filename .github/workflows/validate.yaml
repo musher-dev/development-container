@@ -60,22 +60,6 @@ jobs:
         # resolved Feature digests drift from devcontainer.json.
         run: npx -y @devcontainers/cli build --workspace-folder . --frozen-lockfile
 
-  env-check:
-    name: Env Template Sync
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - name: Install Task
-        uses: arduino/setup-task@v3
-        with:
-          # Keep in lockstep with the go-task Feature pin in devcontainer.json.
-          version: 3.52.0
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Verify .env / .env.example stay in sync
-        run: |
-          cp .devcontainer/.env.example .devcontainer/.env
-          task env:check
-
   lint:
     name: Lint
     runs-on: ubuntu-latest
