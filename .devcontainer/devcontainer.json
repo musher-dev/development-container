@@ -31,7 +31,13 @@
     "ghcr.io/devcontainers/features/python:1": { "version": "3.13.14" },
     "ghcr.io/devcontainers/features/go:1": { "version": "1.26.5" },
     "ghcr.io/devcontainers/features/java:1": {
+      // jdkDistro is pinned because the Feature's default ("ms", Microsoft
+      // OpenJDK) disappeared from SDKMAN's index: `sdk list java` returns no
+      // -ms builds at all, and the install fails with "Version 17 not found.
+      // Available versions:" followed by nothing. Temurin is the Eclipse
+      // Adoptium build and carries 17.
       "version": "17",
+      "jdkDistro": "tem",
       "installGradle": false,
       "installMaven": false
     },
