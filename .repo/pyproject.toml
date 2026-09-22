@@ -5,6 +5,9 @@ description = "Structural policy checks for the Musher dev container template."
 requires-python = ">=3.11"
 dependencies = ["pyyaml>=6.0"]
 
+[dependency-groups]
+dev = ["pytest>=8"]
+
 [project.scripts]
 repo = "governance.cli:main"
 

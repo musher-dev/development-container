@@ -3,10 +3,17 @@
 **Philosophy: One need, one place.** Every configuration concern maps to exactly one canonical location. If you're
 unsure where something goes, use the decision tree below.
 
+This guide covers the **repository level**. Whether a file belongs to the repository or to the product directory is
+decided first, by [LAYOUT.md](LAYOUT.md#the-placement-test).
+
 ## Decision Tree
 
 ```text
 Where does my configuration go?
+
+Is it read by the product's native toolchain, or found by walking up from
+the product (Cargo.toml, rustfmt.toml, tsconfig.json, ruff.toml)?
+  → <product>/ — see LAYOUT.md. Everything below is the repository level.
 
 Is the tool's config auto-loaded only from the repo root, with no way to
 point at another path (Task)?
@@ -52,7 +59,7 @@ Runs on every container start?
 
 ## Where Configuration Lives
 
-Four homes, and a rule for choosing between them. Ask these in order and stop at
+Four homes at the repository level, and a rule for choosing between them. Ask these in order and stop at
 the first "yes".
 
 | # | Question | Home | Examples |
@@ -64,8 +71,9 @@ the first "yes".
 
 Why `.config/` is dotted: it is repo infrastructure, and it sits alongside the
 other infrastructure directories this repo already has — `.devcontainer/`,
-`.github/`, `.repo/`. What is visible at the root is content you edit; what is
-dotted is machinery that operates on it.
+`.github/`, `.repo/`. Undotted at the root are the product directory and the
+entry points people open first; dotted is the machinery that operates on the
+repository (see [LAYOUT.md](LAYOUT.md#the-rule)).
 
 Three rules make the `.config/` home hold:
 
@@ -564,6 +572,8 @@ settings across container rebuilds.
 ## Directory Map
 
 ```text
+<product>/                    The product (absent in the template; see LAYOUT.md)
+LAYOUT.md                     Which level a file belongs to: repository or product
 .config/                      Tool configuration (see "Where configuration lives")
   README.md                   Index: every file, its tool, and how it is reached
   lefthook.yml                Git hooks (top-level: lefthook's search stops at .config/lefthook.*)
@@ -575,16 +585,24 @@ settings across container rebuilds.
 .repo/                        Repo governance toolchain (the `repo` CLI)
   README.md                   What each policy enforces, and why
   pyproject.toml              uv project; declares the `repo` console-script
+  layout.toml                 The product declaration (`product = ""` here)
+  tests/                      pytest suite for the policies
   governance/
     cli.py                    `repo check` and the per-policy subcommands
     reporting.py              The Violation record (code, reason, fix)
-    repo.py                   Repo-root discovery, YAML/JSONC readers
+    repo.py                   Repo-root discovery, YAML/JSONC/TOML readers, tracked files
+    globs.py                  Glob matching shared by the path policies
+    envschema.py              The shared env.schema.yaml shape
     policies/__init__.py      The policy registry -- the only wiring a policy needs
     policies/config/          .config/ layout, index, and no shadowing root config
+    policies/layout/          Root vs the declared product directory, and parity with it
+    policies/paths/           Configured globs, directories and path vars still resolve
+    policies/env/             Every env.schema.yaml has the shared shape
     policies/ports/           Port table ↔ forwardPorts ↔ compose parity
     policies/toolchain/       Image-baked pins; banned rate-limit-fragile Features
     policies/hooks/           lefthook ↔ CI job parity
     policies/rulesets/        Branch rulesets ↔ CI job-name parity
+    policies/comments/        Comment-block size and live docs pointers
 .github/
   dependabot.yml              Weekly updates: devcontainers, actions, docker
   rulesets/                   Branch protection as committed JSON (+ RULESETS.md)

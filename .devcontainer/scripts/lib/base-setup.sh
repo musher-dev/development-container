@@ -169,7 +169,7 @@ base_install_repo_cli() {
     return 0
   fi
   log "Installing the repo governance CLI from .repo/..."
-  retry 3 5 uv tool install --force "${repo_dir}"
+  retry 3 5 uv tool install --force --reinstall "${repo_dir}"
 }
 
 # --- Verify ---

@@ -54,6 +54,7 @@ from that same file via `jdx/mise-action`.
 | `compose.yaml`, stack configs | `.devcontainer/` | Same — environment, not code quality |
 | `.gitattributes`, `.gitignore` | Repo root | Git reads these from the root only |
 | VS Code settings | `devcontainer.json` | `customizations.vscode.settings` is the single editor source |
+| Product-native configs (`rustfmt.toml`, `.cargo/`, `tsconfig.json`, `ruff.toml`) | `<product>/` | Their tools find them by walking up from the product; see [LAYOUT.md](../LAYOUT.md) |
 
 ## A trap worth knowing
 

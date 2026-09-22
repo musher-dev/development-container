@@ -6,7 +6,7 @@ version: '3'
 
 tasks:
   check:
-    desc: Run every repo-structure policy (config layout, ports, hook/CI parity).
+    desc: Run every repo-structure policy (config, layout, paths, env, ports, hooks, rulesets, toolchain, comments).
     cmds:
       - repo check
 
@@ -20,6 +20,26 @@ tasks:
     cmds:
       - repo ports check
 
+  check:layout:
+    desc: Verify the root holds no product content and every product path agrees with .repo/layout.toml.
+    cmds:
+      - repo layout check
+
+  check:paths:
+    desc: Verify every configured glob, directory and Taskfile path var still resolves.
+    cmds:
+      - repo paths check
+
+  check:env:
+    desc: Verify every env.schema.yaml has the shared shape.
+    cmds:
+      - repo env check
+
+  test:
+    desc: Run the governance policies' pytest suite.
+    cmds:
+      - uv run --project .repo --group dev pytest .repo/tests
+
   check:hooks:
     desc: Verify every lefthook job has a CI counterpart and vice versa.
     cmds:
@@ -28,4 +48,6 @@ tasks:
   install:
     desc: (Re)install the `repo` CLI from .repo/ into the current environment.
     cmds:
-      - uv tool install --force ./.repo
+      # --reinstall: uv reuses the cached build of an unchanged version otherwise,
+      # so an edited policy would never take effect.
+      - uv tool install --force --reinstall ./.repo

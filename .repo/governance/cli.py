@@ -2,6 +2,9 @@
 
     repo check            run every policy
     repo config check     .config/ layout and liveness
+    repo layout check     repo root vs the declared product directory
+    repo paths check      configured globs and directories still resolve
+    repo env check        env schemas have the shared shape
     repo ports check      port declarations agree
     repo hooks check      local hooks and CI stay in step
 """

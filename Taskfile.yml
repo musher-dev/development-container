@@ -16,6 +16,9 @@ includes:
     taskfile: taskfiles/repo.Taskfile.yml
 
 vars:
+  # With a product declared in .repo/layout.toml, tasks reach its toolchain via
+  # `dir: '{{.PRODUCT_DIR}}'` (LAYOUT-09 checks it). See LAYOUT.md.
+  # PRODUCT_DIR: '{{.ROOT_DIR}}/<product>'
   ENV_FILE: .devcontainer/.env
   ENV_EXAMPLE: .devcontainer/.env.example
   ENV_LIB: .devcontainer/scripts/lib/env-check.sh

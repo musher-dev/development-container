@@ -14,6 +14,11 @@ updates:
     commit-message:
       prefix: "devcontainer"
 
+  # A product's own ecosystem (cargo, npm, uv, gomod ...) scans the product
+  # directory, never "/" -- LAYOUT-08. See LAYOUT.md → "Ecosystem Adapters".
+  # - package-ecosystem: "cargo"
+  #   directory: "/<product>"
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

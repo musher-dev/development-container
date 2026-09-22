@@ -72,6 +72,10 @@ EXCLUDED_DIR_NAMES = {"node_modules", "__pycache__", ".git"}
 
 _BACKTICKED = re.compile(r"`([^`]+)`")
 
+#: A `.config/<path>` a caller names. The lookbehind skips paths that merely end
+#: in `.config/`, such as the gh CLI's `/home/vscode/.config/gh`.
+_REFERENCE = re.compile(r"(?<![\w/~$}.])\.config/[\w./-]*\w")
+
 
 def _config_files(config_dir: Path) -> list[Path]:
     files = []
@@ -79,6 +83,21 @@ def _config_files(config_dir: Path) -> list[Path]:
         dirnames[:] = [d for d in dirnames if d not in EXCLUDED_DIR_NAMES]
         files.extend(Path(dirpath) / f for f in filenames)
     return sorted(files)
+
+
+def _referenced_paths() -> dict[str, str]:
+    """Every `.config/...` path named on a non-comment caller line, mapped to its caller."""
+    found: dict[str, str] = {}
+    for pattern in CALLER_GLOBS:
+        for path in repo.glob(pattern):
+            if not path.is_file():
+                continue
+            for line in path.read_text(encoding="utf-8").splitlines():
+                if line.lstrip().startswith("#"):
+                    continue
+                for match in _REFERENCE.finditer(line):
+                    found.setdefault(match.group(0), repo.rel(path))
+    return found
 
 
 def _caller_text() -> str:
@@ -127,6 +146,12 @@ def run() -> Report:
 
         if name not in AUTO_DISCOVERED and f"{CONFIG_DIR}/{rel}" not in callers:
             report.add(v.orphaned(rel))
+
+    for ref, caller in sorted(_referenced_paths().items()):
+        if ref.rsplit("/", 1)[-1] in LOCAL_OVERRIDES:
+            continue
+        if not (root / ref).is_file():
+            report.add(v.dangling_reference(ref, caller))
 
     for name in SHADOWING:
         if (root / name).is_file():

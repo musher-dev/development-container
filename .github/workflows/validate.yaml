@@ -111,6 +111,10 @@ jobs:
         run: uv tool install ./.repo
       - name: Check repo structure policies
         run: repo check
+      - name: Test the policies
+        # Most layout rules only fire once a product is declared, which the
+        # template never does -- the suite is what keeps them honest.
+        run: uv run --project .repo --group dev pytest .repo/tests
 
   build:
     name: Devcontainer Build

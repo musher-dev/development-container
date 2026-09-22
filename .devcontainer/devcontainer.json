@@ -72,6 +72,9 @@
     "source=musher-${devcontainerId}-codex-config,target=/home/vscode/.codex,type=volume"
     // Uncomment to persist Docker-in-Docker data across rebuilds:
     // "source=musher-${devcontainerId}-dind-data,target=/var/lib/docker/volumes,type=volume"
+    // Product build output (e.g. Rust's target/), kept off the bind mount.
+    // Must sit under the declared product -- LAYOUT.md → "Ecosystem Adapters":
+    // "source=musher-${devcontainerId}-target,target=/workspaces/${localWorkspaceFolderBasename}/<product>/target,type=volume"
   ],
 
   "containerEnv": {

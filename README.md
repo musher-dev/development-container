@@ -50,6 +50,8 @@ The startup MOTD also warns about drift or unfilled required keys.
 
 ## Customize
 
+- Add your product → a directory named after the repo, declared in `.repo/layout.toml`. The repository root stays
+  the machinery that acts on it; [LAYOUT.md](LAYOUT.md) is the rule and `repo layout check` enforces it
 - Comment out unneeded features/extensions in `devcontainer.json`
 - Change a tool version → `devcontainer.json` (Features), `.devcontainer/Dockerfile` (bun, uv, Task, mise), or
   `.devcontainer/mise.toml` for runtime-only CLIs (AI CLIs, lefthook, linters). The four-tier rule is in
