@@ -140,3 +140,18 @@ def executable_in_config(rel: str) -> Violation:
         where=f".config/{rel}",
         docs=DOCS,
     )
+
+
+def dangling_reference(ref: str, caller: str) -> Violation:
+    return Violation(
+        code="CFG-09",
+        summary=f"{caller} names {ref}, which does not exist",
+        reason=(
+            "CFG-04 proves every config has a caller; this proves every caller "
+            "has a config. A tool handed a missing --config path either errors "
+            "late or falls back to its defaults, silently checking something else."
+        ),
+        fix=f"Point {caller} at the real file under .config/, or create {ref}.",
+        where=caller,
+        docs=DOCS,
+    )

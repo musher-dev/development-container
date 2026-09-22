@@ -40,6 +40,7 @@ SCAN_GLOBS = (
     "taskfiles/*.yml",
     "Taskfile.yml",
     ".repo/**/*.py",
+    ".repo/*.toml",
 )
 
 #: Lines that start with `#` but are instructions to a tool, not prose. They sit
@@ -88,12 +89,17 @@ def _blocks(path: Path) -> list[tuple[int, int]]:
     return found
 
 
+def _tracked(pattern: str) -> list[Path]:
+    """Tracked matches only: `uv run` builds .repo/.venv, whose vendored code is not ours."""
+    tracked = set(repo.tracked_files())
+    return [p for p in repo.glob(pattern) if p.is_file() and repo.rel(p) in tracked]
+
+
 def _scanned_files() -> list[Path]:
     seen: dict[str, Path] = {}
     for pattern in SCAN_GLOBS:
-        for path in repo.glob(pattern):
-            if path.is_file():
-                seen[repo.rel(path)] = path
+        for path in _tracked(pattern):
+            seen[repo.rel(path)] = path
     return [seen[key] for key in sorted(seen)]
 
 
@@ -116,7 +122,7 @@ def run() -> Report:
 
     # Pointers are read statically: the violation factories take arguments, so
     # calling them just to inspect `docs` would mean inventing fixture values.
-    for path in repo.glob(".repo/**/*.py"):
+    for path in _tracked(".repo/**/*.py"):
         source = repo.rel(path)
         for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
             if not isinstance(node, ast.Constant) or not isinstance(node.value, str):

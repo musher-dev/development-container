@@ -143,48 +143,31 @@ _motd_quickref() {
   echo "  claude                           Claude Code AI"
 }
 
-# Warns when .env is missing keys from .env.example, or has empty
-# required values. Silent when env is healthy.
+# Warns when .env is missing a value the enabled stacks need, or has drifted
+# from the schema. Silent when env is healthy.
+#
+# Requiredness is profile-aware -- `repo env doctor` only counts bindings whose
+# consuming stack is actually enabled -- so this stays quiet about credentials
+# for stacks nobody turned on.
 #
 # Globals:
 #   _BOLD, _DIM, _YELLOW, _RESET — color codes set by _motd_setup_colors
 # Arguments:
-#   $1 — .devcontainer directory (where .env / .env.example live)
+#   $1 — .devcontainer directory (unused; kept for call-site stability)
 _motd_env_warnings() {
-  local devcontainer_dir="${1:-}"
-  [[ -d "${devcontainer_dir}" ]] || return 0
+  has_cmd repo || return 0
 
-  local env_file="${devcontainer_dir}/.env"
-  local example_file="${devcontainer_dir}/.env.example"
-  local lib_file="${devcontainer_dir}/scripts/lib/env-check.sh"
-  [[ -f "${lib_file}" ]] || return 0
-
-  # shellcheck source=./env-check.sh
-  source "${lib_file}"
-
-  local missing="" required=""
-  if [[ -f "${example_file}" ]]; then
-    missing="$(env_check_drift "${env_file}" "${example_file}" 2>&1 || true)"
-  fi
-  required="$(env_check_required "${env_file}" 2>/dev/null || true)"
-
-  if [[ -z "${missing}" && -z "${required}" ]]; then
-    return 0
-  fi
+  local summary
+  summary="$(repo env doctor --motd 2>/dev/null)" && return 0
+  [[ -n "${summary}" ]] || return 0
 
   local sep
   sep="$(printf '─%.0s' {1..54})"
   echo ""
   echo "  ${_BOLD}${_YELLOW}Environment${_RESET}"
   echo "  ${_DIM}${sep}${_RESET}"
-  if [[ -n "${missing}" ]]; then
-    echo "  ${_YELLOW}Missing keys in .env (run 'task env:reset' to sync):${_RESET}"
-    awk '{print "    - " $0}' <<< "${missing}"
-  fi
-  if [[ -n "${required}" ]]; then
-    echo "  ${_YELLOW}Required keys with empty values:${_RESET}"
-    awk '{print "    - " $0}' <<< "${required}"
-  fi
+  awk '{print "  '"${_YELLOW}"'" $0 "'"${_RESET}"'"}' <<< "${summary}"
+  echo "  Run ${_BOLD}task env:setup${_RESET} to fill these in."
 }
 
 _motd_tips() {
@@ -193,7 +176,7 @@ _motd_tips() {
   echo ""
   echo "  ${_BOLD}Tips${_RESET}"
   echo "  ${_DIM}${sep}${_RESET}"
-  echo "  * Enable services:         edit .devcontainer/.env"
+  echo "  * Enable services:         task env:setup"
   echo "  * Available profiles:      redis, minio, registry,"
   echo "                             azimutt, observability"
   echo "  * Tool versions:           CONFIGURATION.md (Runtimes & Tools)"

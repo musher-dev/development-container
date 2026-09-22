@@ -45,10 +45,6 @@ CI_ONLY = {
         "Resolves every Feature digest over the network; too slow and too "
         "network-dependent for a pre-commit hook."
     ),
-    "env-check": (
-        "Asserts .env matches the template. Locally the developer's .env is "
-        "expected to differ, and the startup MOTD already surfaces drift."
-    ),
     "build": (
         "Builds the whole dev container image. Minutes, not seconds -- a "
         "pre-commit hook cannot absorb that."

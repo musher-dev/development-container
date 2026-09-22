@@ -7,6 +7,9 @@ version: '3'
 # Environment tasks (tools:*, env:*) stay here because they orchestrate the dev
 # container itself. Everything else is a module under taskfiles/.
 #
+# The env:* tasks wrap `repo env`, whose source of truth is
+# .devcontainer/env.schema.yaml -- CONFIGURATION.md → "Environment Variables".
+#
 # Project-specific tasks belong in a Taskfile.yml inside the consuming repo.
 
 includes:
@@ -16,9 +19,11 @@ includes:
     taskfile: taskfiles/repo.Taskfile.yml
 
 vars:
+  # With a product declared in .repo/layout.toml, tasks reach its toolchain via
+  # `dir: '{{.PRODUCT_DIR}}'` (LAYOUT-09 checks it). See LAYOUT.md.
+  # PRODUCT_DIR: '{{.ROOT_DIR}}/<product>'
   ENV_FILE: .devcontainer/.env
   ENV_EXAMPLE: .devcontainer/.env.example
-  ENV_LIB: .devcontainer/scripts/lib/env-check.sh
 
 tasks:
   tools:install:
@@ -32,57 +37,39 @@ tasks:
       - mise current
       - mise doctor
 
+  stacks:restart:
+    desc: Bring the compose stacks up to match the current .env (skips stacks missing a value).
+    cmds:
+      - bash .devcontainer/scripts/startup.sh
+
+  env:setup:
+    desc: Fill in the values the enabled stacks need, interactively.
+    interactive: true
+    cmds:
+      - repo env setup
+
+  env:doctor:
+    desc: Report what the enabled stacks still need (profile-aware). Reads .env only.
+    cmds:
+      - repo env doctor
+
+  env:sync:
+    desc: Add bindings the schema has gained to .env, and mint local secrets. Never overwrites.
+    cmds:
+      - repo env sync
+
+  env:render:
+    desc: Re-render .devcontainer/.env.example from .devcontainer/env.schema.yaml.
+    cmds:
+      - repo env render
+
   env:check:
-    desc: Verify .devcontainer/.env has every key from .env.example (structural drift only).
-    silent: true
+    desc: Alias of env:doctor, kept for muscle memory.
     cmds:
-      - |
-        # shellcheck source={{.ENV_LIB}}
-        source "{{.ENV_LIB}}"
-        rc=0
-        missing="$(env_check_drift "{{.ENV_FILE}}" "{{.ENV_EXAMPLE}}" 2>&1)" || rc=$?
-        if [[ ${rc} -ne 0 ]]; then
-          echo "Missing keys in {{.ENV_FILE}}:"
-          echo "${missing}" | sed 's/^/  - /'
-          echo "Run 'task env:reset' to re-copy from the template (overwrites local values)."
-          exit 1
-        fi
-        echo "{{.ENV_FILE}} is in sync with {{.ENV_EXAMPLE}}."
-
-  env:required:
-    desc: List required keys (declared empty in the template) that have no value in .env.
-    silent: true
-    cmds:
-      - |
-        source "{{.ENV_LIB}}"
-        required="$(env_check_required "{{.ENV_FILE}}")"
-        if [[ -z "${required}" ]]; then
-          echo "All required keys in {{.ENV_FILE}} have values."
-          exit 0
-        fi
-        echo "Required keys with empty values in {{.ENV_FILE}}:"
-        echo "${required}" | sed 's/^/  - /'
-        exit 1
-
-  env:diff:
-    desc: Show keys present in one of .env / .env.example but not the other.
-    silent: true
-    cmds:
-      - |
-        source "{{.ENV_LIB}}"
-        expected="$(env_check_keys "{{.ENV_EXAMPLE}}" | sort -u)"
-        actual="$(env_check_keys "{{.ENV_FILE}}" | sort -u)"
-        missing="$(comm -23 <(echo "${expected}") <(echo "${actual}"))"
-        extra="$(comm -13 <(echo "${expected}") <(echo "${actual}"))"
-        if [[ -z "${missing}" && -z "${extra}" ]]; then
-          echo "Keys are in sync."
-          exit 0
-        fi
-        [[ -n "${missing}" ]] && { echo "Missing from .env:"; echo "${missing}" | sed 's/^/  - /'; }
-        [[ -n "${extra}" ]]   && { echo "Extra in .env (not in template):"; echo "${extra}" | sed 's/^/  + /'; }
+      - task: env:doctor
 
   env:reset:
-    desc: Re-copy .env.example over .env (destroys local values). Prompts for confirmation.
+    desc: Re-copy the generated .env.example over .env (destroys local values). Prompts first.
     silent: true
     cmds:
       - |

@@ -113,6 +113,17 @@ main() {
     return 0
   fi
 
+  # Which stacks can actually start, from .env rather than from this process's
+  # environment: `runArgs --env-file` froze a copy at `docker run` time, and
+  # Compose gives the shell environment precedence over --env-file, so a stale
+  # COMPOSE_PROFILES would otherwise beat the file the developer just edited.
+  # A stack missing a required value is skipped; the container is never blocked.
+  if has_cmd repo; then
+    COMPOSE_PROFILES="$(repo env doctor --compose-profiles 2>/dev/null || echo "${COMPOSE_PROFILES:-}")"
+    export COMPOSE_PROFILES
+    repo env doctor --quiet >/dev/null 2>&1 || log "Some values are missing -- run 'task env:setup' ($(repo env doctor --motd 2>/dev/null | head -1))"
+  fi
+
   log "Starting compose services..."
   docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --remove-orphans
 

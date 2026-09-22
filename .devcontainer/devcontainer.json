@@ -31,7 +31,13 @@
     "ghcr.io/devcontainers/features/python:1": { "version": "3.13.14" },
     "ghcr.io/devcontainers/features/go:1": { "version": "1.26.5" },
     "ghcr.io/devcontainers/features/java:1": {
+      // jdkDistro is pinned because the Feature's default ("ms", Microsoft
+      // OpenJDK) disappeared from SDKMAN's index: `sdk list java` returns no
+      // -ms builds at all, and the install fails with "Version 17 not found.
+      // Available versions:" followed by nothing. Temurin is the Eclipse
+      // Adoptium build and carries 17.
       "version": "17",
+      "jdkDistro": "tem",
       "installGradle": false,
       "installMaven": false
     },
@@ -72,7 +78,18 @@
     "source=musher-${devcontainerId}-codex-config,target=/home/vscode/.codex,type=volume"
     // Uncomment to persist Docker-in-Docker data across rebuilds:
     // "source=musher-${devcontainerId}-dind-data,target=/var/lib/docker/volumes,type=volume"
+    // Product build output (e.g. Rust's target/), kept off the bind mount.
+    // Must sit under the declared product -- LAYOUT.md → "Ecosystem Adapters":
+    // "source=musher-${devcontainerId}-target,target=/workspaces/${localWorkspaceFolderBasename}/<product>/target,type=volume"
   ],
+
+  // Codespaces prompts for these at creation time. The block must list exactly
+  // the bindings declaring `source: host` in env.schema.yaml -- ENV-06 checks
+  // it, and initialize.sh fills the same keys from the host environment when
+  // you build locally.
+  // "secrets": {
+  //   "EXAMPLE_API_KEY": { "description": "...", "documentationUrl": "https://..." }
+  // },
 
   "containerEnv": {
     // Point mise at the workspace manifest (it lives under .devcontainer/, not

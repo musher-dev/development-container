@@ -75,9 +75,9 @@ pre-commit:
       fail_text: "Workflow lint failed. Run 'task lint:actions' for the full output."
 
     - name: governance
-      # Structural policy: .config/ layout, port-declaration parity, and
-      # this file's own parity with CI. Cheap (pure Python, no network).
-      glob: "{.config/**,.devcontainer/**,.github/workflows/**,taskfiles/**,CONFIGURATION.md,Taskfile.yml}"
+      # Structural policy (`repo check`). No glob: the layout policy reads
+      # every root entry and a product dir whose name the template cannot
+      # know. Cheap (pure Python, no network), so it runs on every commit.
       run: repo check
       fail_text: "Repo structure policy failed. Run 'task repo:check' for the full report."
 

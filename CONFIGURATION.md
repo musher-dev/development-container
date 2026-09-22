@@ -3,10 +3,17 @@
 **Philosophy: One need, one place.** Every configuration concern maps to exactly one canonical location. If you're
 unsure where something goes, use the decision tree below.
 
+This guide covers the **repository level**. Whether a file belongs to the repository or to the product directory is
+decided first, by [LAYOUT.md](LAYOUT.md#the-placement-test).
+
 ## Decision Tree
 
 ```text
 Where does my configuration go?
+
+Is it read by the product's native toolchain, or found by walking up from
+the product (Cargo.toml, rustfmt.toml, tsconfig.json, ruff.toml)?
+  → <product>/ — see LAYOUT.md. Everything below is the repository level.
 
 Is the tool's config auto-loaded only from the repo root, with no way to
 point at another path (Task)?
@@ -38,7 +45,7 @@ VS Code editor behavior or extension?
   → devcontainer.json → customizations.vscode block
 
 Credential or per-developer toggle?
-  → .devcontainer/.env (auto-created from .env.example on first build)
+  → declare it in .devcontainer/env.schema.yaml (.env.example is generated)
 
 Service-internal configuration (tuning, pipelines)?
   → stacks/<name>/ (colocated with that stack's compose.yaml)
@@ -52,7 +59,7 @@ Runs on every container start?
 
 ## Where Configuration Lives
 
-Four homes, and a rule for choosing between them. Ask these in order and stop at
+Four homes at the repository level, and a rule for choosing between them. Ask these in order and stop at
 the first "yes".
 
 | # | Question | Home | Examples |
@@ -64,8 +71,9 @@ the first "yes".
 
 Why `.config/` is dotted: it is repo infrastructure, and it sits alongside the
 other infrastructure directories this repo already has — `.devcontainer/`,
-`.github/`, `.repo/`. What is visible at the root is content you edit; what is
-dotted is machinery that operates on it.
+`.github/`, `.repo/`. Undotted at the root are the product directory and the
+entry points people open first; dotted is the machinery that operates on the
+repository (see [LAYOUT.md](LAYOUT.md#the-rule)).
 
 Three rules make the `.config/` home hold:
 
@@ -105,8 +113,8 @@ See [`.config/README.md`](.config/README.md) for the per-file index, and
 | | Git config | Host `.gitconfig` (auto-forwarded by devcontainers) |
 | **Environment** | Runtime behavior vars (`PYTHONUNBUFFERED`, etc.) | `devcontainer.json` → `containerEnv` |
 | | PATH extensions | `devcontainer.json` → `remoteEnv` |
-| | Service credentials (dev-only) | `.devcontainer/.env` |
-| | Service profiles/toggles | `.devcontainer/.env` → `COMPOSE_PROFILES` |
+| | Service credentials (dev-only) | `.devcontainer/env.schema.yaml` → rendered to `.env.example`, copied to `.env` |
+| | Service profiles/toggles | `COMPOSE_PROFILES` (set it with `task env:setup`) |
 | | Secrets (API keys, tokens) | Host env forwarded via `remoteEnv` — never committed |
 | **Services** | Stack orchestrator (`include:` list) | `.devcontainer/stacks/compose.yaml` |
 | | Infrastructure services | `.devcontainer/stacks/<name>/compose.yaml` |
@@ -343,20 +351,50 @@ Never commit secrets. Forward them from your host environment:
 }
 ```
 
-### Service Credentials
+### The schema is the source of truth
 
-Dev-only credentials live in `.devcontainer/.env` (gitignored). The host-side `initializeCommand`
-(`scripts/initialize.sh`) copies `.env.example` → `.env` on first build, so `runArgs --env-file` has a valid file to
-load. The same file is also auto-discovered by Docker Compose. To reset, delete `.devcontainer/.env` and rebuild — or
-run `task env:reset`.
+Every variable the dev environment reads is declared in
+[`.devcontainer/env.schema.yaml`](.devcontainer/env.schema.yaml). `.env.example` is **generated** from it
+(`task env:render`), and `repo env check` fails the build when the two disagree. Edit the schema, never the rendering.
 
-The template follows a three-state grammar:
+The product's own runtime contract is a *different* schema, at `<product>/env.schema.yaml` — see
+[LAYOUT.md](LAYOUT.md#the-env-contract) for why they sit at different levels.
 
-| State | Syntax | Meaning |
-| --- | --- | --- |
-| Filled default | `VAR=value` | Safe demo value; override only if you need something different. |
-| Required (empty) | `VAR=` | Must be filled in; the MOTD warns at container start until set. |
-| Optional override | `# VAR=value` | Uncomment to enable. |
+```yaml
+bindings:
+  MINIO_ROOT_PASSWORD:
+    type: string
+    local_default: minioadmin     # → `MINIO_ROOT_PASSWORD=minioadmin`
+    sensitivity: internal         # public | internal | secret
+    consumers: [minio]            # only required when the minio stack runs
+    description: Root password of the project MinIO stack. Dev-only.
+```
+
+| Field | Effect |
+| --- | --- |
+| `local_default` | Rendered live: `VAR=value`. A `secret` may only carry an empty or loopback value (`ENV-07`). |
+| `required: true` | Rendered empty: `VAR=`. `repo env doctor` asks for it. |
+| neither | Rendered commented: `# VAR=<default>` — an offer, not a value. |
+| `consumers: [<stack>]` | Requiredness follows the enabled `COMPOSE_PROFILES`. Checked against the stack's compose file (`ENV-03`). |
+| `source: host` | Filled from the host environment by `initialize.sh`, and mirrored into `secrets` so Codespaces prompts (`ENV-06`). |
+| `local_generate: hex:32` | Minted per developer by `repo env sync`, never committed. |
+| `mirrored_in: [...]` | Configs that repeat the value literally (Tempo, Loki) must agree (`ENV-05`). |
+
+### Filling it in
+
+The container always starts. What does not start is the stack whose value is missing:
+
+| Command | Purpose |
+| --- | --- |
+| `task env:setup` | Interactive fill — asks only for what is missing or invalid, masks secrets, offers menus |
+| `task env:doctor` | What the *enabled* stacks still need, and which ones will be skipped |
+| `task env:sync` | Adds bindings the schema has gained, mints local secrets; never overwrites a value |
+| `task env:render` | Regenerates `.env.example` after a schema change |
+| `task env:reset` | Re-copies the template over `.env` (destroys local values) |
+
+`startup.sh` skips a stack whose required values are missing and says so; the MOTD repeats it on every shell. Because
+`runArgs --env-file` reads `.env` once at `docker run` time, the shell profile re-loads the file (`lib/env-load.sh`)
+so an edited value reaches new terminals without a rebuild.
 
 ---
 
@@ -564,6 +602,8 @@ settings across container rebuilds.
 ## Directory Map
 
 ```text
+<product>/                    The product (absent in the template; see LAYOUT.md)
+LAYOUT.md                     Which level a file belongs to: repository or product
 .config/                      Tool configuration (see "Where configuration lives")
   README.md                   Index: every file, its tool, and how it is reached
   lefthook.yml                Git hooks (top-level: lefthook's search stops at .config/lefthook.*)
@@ -575,16 +615,24 @@ settings across container rebuilds.
 .repo/                        Repo governance toolchain (the `repo` CLI)
   README.md                   What each policy enforces, and why
   pyproject.toml              uv project; declares the `repo` console-script
+  layout.toml                 The product declaration (`product = ""` here)
+  tests/                      pytest suite for the policies
   governance/
     cli.py                    `repo check` and the per-policy subcommands
     reporting.py              The Violation record (code, reason, fix)
-    repo.py                   Repo-root discovery, YAML/JSONC readers
+    repo.py                   Repo-root discovery, YAML/JSONC/TOML readers, tracked files
+    globs.py                  Glob matching shared by the path policies
+    envschema.py              The shared env.schema.yaml shape
     policies/__init__.py      The policy registry -- the only wiring a policy needs
     policies/config/          .config/ layout, index, and no shadowing root config
+    policies/layout/          Root vs the declared product directory, and parity with it
+    policies/paths/           Configured globs, directories and path vars still resolve
+    policies/env/             Every env.schema.yaml has the shared shape
     policies/ports/           Port table ↔ forwardPorts ↔ compose parity
     policies/toolchain/       Image-baked pins; banned rate-limit-fragile Features
     policies/hooks/           lefthook ↔ CI job parity
     policies/rulesets/        Branch rulesets ↔ CI job-name parity
+    policies/comments/        Comment-block size and live docs pointers
 .github/
   dependabot.yml              Weekly updates: devcontainers, actions, docker
   rulesets/                   Branch protection as committed JSON (+ RULESETS.md)
@@ -597,7 +645,8 @@ Taskfile.yml                  Task entry point (cannot move — root-only discov
   .dockerignore               Empties the build context (`*`); keeps .env off the daemon
   devcontainer.json           Features, extensions, settings, mounts, ports
   mise.toml                   Runtime-only CLIs with no Feature
-  .env.example                Environment template (copy to .env)
+  env.schema.yaml             Dev-environment contract -- the source of truth
+  .env.example                GENERATED from the schema by `task env:render`
   .env                        Local overrides (gitignored)
   stacks/                     The services, and the orchestrator that includes them
     compose.yaml              Stack orchestrator (`include:` + `name: musher-dev`)
@@ -631,6 +680,6 @@ Taskfile.yml                  Task entry point (cannot move — root-only discov
     lib/
       base-setup.sh           Reusable tool installer (mise CLIs + Claude)
       common.sh               Shared utilities
-      env-check.sh            .env / .env.example drift detection
+      env-load.sh             Exports .env into a shell without sourcing it
       motd.sh                 Startup MOTD renderer
 ```
