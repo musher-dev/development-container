@@ -82,7 +82,11 @@ ensure_writable_dir() {
   if [[ ! -d "$dir" ]]; then
     maybe_sudo mkdir -p "$dir"
   fi
-  maybe_sudo chown -R "${owner}:${owner}" "$dir"
+  # A recursive chown walks the whole tree, which is slow on a large volume.
+  # Recurse only when the top level is wrong, as on a freshly created volume.
+  if [[ "$(stat -c %U "$dir")" != "${owner}" ]]; then
+    maybe_sudo chown -R "${owner}:${owner}" "$dir"
+  fi
 }
 
 # Creates config directories from "label:path" pairs.
@@ -103,6 +107,30 @@ setup_config_dirs() {
   done
 }
 
+# Prints the lefthook config this repo uses, if any.
+#
+# Follows lefthook's own search order (MainConfigNames in
+# internal/config/loader.go), first match wins. The template's .config/ file
+# is .yml, so that is the only extension probed there.
+#
+# Arguments:
+#   $1 — repo root
+# Outputs:
+#   The config path on stdout
+# Returns:
+#   0 if a config exists, 1 otherwise
+lefthook_config() {
+  local root="${1:?usage: lefthook_config <repo-root>}"
+  local name
+  for name in lefthook.yml lefthook.yaml .lefthook.yml .lefthook.yaml .config/lefthook.yml; do
+    if [[ -f "${root}/${name}" ]]; then
+      printf '%s\n' "${root}/${name}"
+      return 0
+    fi
+  done
+  return 1
+}
+
 # Fixes NVM directory ownership to the current user.
 #
 # Globals:
@@ -111,7 +139,8 @@ setup_config_dirs() {
 #   Writes progress to stderr via log()
 fix_nvm_permissions() {
   local nvm_dir="${NVM_DIR:-/usr/local/share/nvm}"
-  if [[ -d "$nvm_dir" ]]; then
+  # Same top-level guard as ensure_writable_dir: skip the walk when it is done.
+  if [[ -d "$nvm_dir" && "$(stat -c %U "$nvm_dir")" != "$(id -un)" ]]; then
     log "Fixing NVM permissions in ${nvm_dir}..."
     maybe_sudo chown -R "$(id -un):$(id -gn)" "$nvm_dir"
   fi

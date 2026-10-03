@@ -60,12 +60,12 @@ pre-commit:
     # relint the repo.
 
     - name: markdown
-      glob: "*.md"
+      glob: "**/*.md"
       run: markdownlint-cli2 --config .config/markdown/markdownlint.jsonc {staged_files}
       fail_text: "Markdown lint failed. Run 'task lint:md:fix', then re-stage."
 
     - name: yaml
-      glob: "*.{yml,yaml}"
+      glob: "**/*.{yml,yaml}"
       run: yamllint -c .config/yaml/yamllint.yaml {staged_files}
       fail_text: "YAML lint failed. See .config/yaml/yamllint.yaml for the active rules."
 

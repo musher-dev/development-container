@@ -146,6 +146,10 @@ base_install_claude() {
 
 # --- Repo governance CLI ---
 
+# The governance CLI's project. A consuming repo without .repo/ skips the
+# install, and base_verify_tools then skips `repo` too.
+readonly _REPO_PROJECT="${_LIB_DIR}/../../../.repo"
+
 # Installs the `repo` CLI from .repo/ so structure policies run locally the
 # same way they run in CI.
 #
@@ -159,7 +163,7 @@ base_install_claude() {
 # Returns:
 #   0 on success, non-zero on failure
 base_install_repo_cli() {
-  local repo_dir="${_LIB_DIR}/../../../.repo"
+  local repo_dir="${_REPO_PROJECT}"
   if [[ ! -f "${repo_dir}/pyproject.toml" ]]; then
     log "No .repo/ project found, skipping governance CLI"
     return 0
@@ -174,15 +178,33 @@ base_install_repo_cli() {
 
 # --- Verify ---
 
-# Verifies the CLIs this script installs (plus a couple of key Feature tools)
-# are on PATH. Runtimes are validated by the container build itself.
+# Verifies the CLIs this repo opted into are on PATH. Runtimes are validated
+# by the container build itself.
+#
+# Only gh, task and claude are unconditional. `repo` and lefthook are checked
+# when the repo carries .repo/ or a lefthook config, and every tool the mise
+# config pins (codex, linters, ...) is checked by `mise ls --missing`, so a
+# consumer that drops a pin is never failed for it.
 #
 # Outputs:
 #   Writes tool status to stderr via log()
 # Returns:
 #   0 if all tools found, 1 if any are missing
 base_verify_tools() {
-  verify_tools gh task codex lefthook claude repo
+  local tools=(gh task claude)
+  [[ -f "${_REPO_PROJECT}/pyproject.toml" ]] && tools+=(repo)
+  lefthook_config "${_LIB_DIR}/../../.." >/dev/null && tools+=(lefthook)
+  local ok=0
+  verify_tools "${tools[@]}" || ok=1
+
+  local missing
+  missing="$(mise ls --missing --no-header 2>/dev/null || true)"
+  if [[ -n "${missing}" ]]; then
+    log "  ✗ mise pins not installed:"
+    log "${missing}"
+    ok=1
+  fi
+  return "${ok}"
 }
 
 # --- Orchestrator ---

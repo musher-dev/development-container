@@ -63,13 +63,16 @@ setup_env_file() {
 }
 
 # Installs lefthook git hooks for this repo. Best-effort: silently
-# skips if lefthook isn't on PATH yet or no lefthook.yml exists.
+# skips if lefthook isn't on PATH yet or the repo has no lefthook config.
+#
+# The config check matters: `lefthook install` with no config writes a root
+# lefthook.yml, which would shadow .config/lefthook.yml.
 #
 # Outputs:
 #   Writes progress to stderr via log()
 install_lefthook_hooks() {
   command -v lefthook >/dev/null 2>&1 || return 0
-  [[ -f "${SCRIPT_DIR}/../../lefthook.yml" ]] || return 0
+  lefthook_config "${SCRIPT_DIR}/../.." >/dev/null || return 0
   log "Installing lefthook git hooks..."
   (cd "${SCRIPT_DIR}/../.." && lefthook install >/dev/null 2>&1) || true
 }

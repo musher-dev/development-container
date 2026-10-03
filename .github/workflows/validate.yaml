@@ -9,7 +9,7 @@ on:
 jobs:
   shellcheck:
     name: ShellCheck
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - name: Run ShellCheck
@@ -21,7 +21,7 @@ jobs:
 
   compose:
     name: Compose Config
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - name: Validate compose config
@@ -52,7 +52,7 @@ jobs:
 
   lockfile:
     name: Devcontainer Lockfile
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - name: Enforce devcontainer-lock.json is current
@@ -62,7 +62,7 @@ jobs:
 
   lint:
     name: Lint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Tool versions resolve from .devcontainer/mise.toml -- the same file the
     # container uses -- so CI and local can never drift.
     env:
@@ -78,7 +78,7 @@ jobs:
       - name: Install Task
         uses: arduino/setup-task@v3
         with:
-          # Keep in lockstep with the go-task Feature pin in devcontainer.json.
+          # Keep in lockstep with ARG TASK_VERSION in .devcontainer/Dockerfile.
           version: 3.52.0
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Run every lint gate
@@ -86,7 +86,7 @@ jobs:
 
   governance:
     name: Repo Structure
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - name: Install uv
@@ -102,7 +102,7 @@ jobs:
 
   build:
     name: Devcontainer Build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - name: Build devcontainer
