@@ -135,7 +135,9 @@ def repo_name() -> str | None:
     return name.removesuffix(".git") or None
 
 
-LAYOUT_FILE = ".repo/layout.toml"
+#: The repository's identity declaration (engineering-conventions REPO-01),
+#: whose `[layout]` table names the product directory (REPO-14).
+REPOSITORY_FILE = ".repo/repository.toml"
 
 #: A product directory name: one path segment, no leading dot.
 PRODUCT_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
@@ -144,11 +146,13 @@ PRODUCT_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 def product() -> str | None:
     """The declared product directory, or None if none (or none valid) is declared.
 
-    Never raises: `repo layout check` owns reporting a broken declaration, and
-    every other caller only needs to know where the product is, if anywhere.
+    Never raises: engineering-conventions (REPO-14) owns reporting a broken
+    declaration, and every caller here only needs to know where the product
+    is, if anywhere.
     """
     try:
-        value = read_toml(LAYOUT_FILE).get("product")
+        layout = read_toml(REPOSITORY_FILE).get("layout") or {}
+        value = layout.get("product") if isinstance(layout, dict) else None
     except (OSError, tomllib.TOMLDecodeError):
         return None
     if isinstance(value, str) and PRODUCT_NAME.fullmatch(value):

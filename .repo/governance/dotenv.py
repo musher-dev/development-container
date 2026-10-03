@@ -1,20 +1,14 @@
-"""Reading and writing the dotenv files the dev container needs.
+"""Reading and writing the dotenv file the dev container needs.
 
-The schema is the source of truth, but `docker run --env-file` and Compose
-read dotenv and nothing else, and the host-side hook that seeds `.env` has only
-bash. So the schema is *rendered* to `.env.example`, and that rendering is what
-the host copies. `repo env check` fails when the two drift.
+The schema is the source of truth, but Compose and the shell loader read
+dotenv and nothing else, so `repo env sync` renders the schema straight into
+the developer's gitignored `.devcontainer/.env`.
 """
 
 from __future__ import annotations
 
 import re
 import textwrap
-
-#: Marks the next key as filled from the host environment by initialize.sh.
-#: Bash reads this line, so its exact text is an interface -- see
-#: .devcontainer/scripts/initialize.sh.
-HOST_MARKER = "# @host"
 
 WIDTH = 76
 _ASSIGNMENT = re.compile(r"^(?P<comment>#\s*)?(?P<key>[A-Z][A-Z0-9_]*)=(?P<value>.*)$")
@@ -53,8 +47,7 @@ def render_binding(name: str, binding: dict) -> list[str]:
     if binding.get("local_generate"):
         lines.append("# Minted per developer by `task env:sync`; never commit it.")
     if binding.get("source") == "host":
-        lines.append("# Taken from the host environment when set there.")
-        lines.append(HOST_MARKER)
+        lines.append("# Taken from the environment (a Codespaces secret or ${localEnv:...}) when set there.")
 
     if "local_default" in binding:
         lines.append(f"{name}={binding['local_default']}")

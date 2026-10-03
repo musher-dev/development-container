@@ -24,28 +24,6 @@ def glob_matches_nothing(source: str, pattern: str) -> Violation:
     )
 
 
-def missing_directory(source: str, directory: str) -> Violation:
-    return Violation(
-        code="PATH-02",
-        summary=f"directory `{directory}` does not exist",
-        reason=_WHY,
-        fix=f"Correct `{directory}`, or remove the setting.",
-        where=source,
-        docs=DOCS,
-    )
-
-
-def dead_task_var(source: str, name: str, value: str) -> Violation:
-    return Violation(
-        code="PATH-03",
-        summary=f"var {name} names `{value}`, which does not exist",
-        reason=_WHY,
-        fix=f"Correct {name}, or delete it if nothing uses it.",
-        where=source,
-        docs=DOCS,
-    )
-
-
 def stale_allowance(pattern: str) -> Violation:
     return Violation(
         code="PATH-04",

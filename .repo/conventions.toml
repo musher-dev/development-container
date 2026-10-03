@@ -1,0 +1,18 @@
+# How this repository holds itself to engineering-conventions. Every family is
+# enforced -- there is no staged [adoption] table -- so `conventions check
+# --fail-on warning` fails on any finding not waived below.
+schema_version = 1
+
+[[waivers]]
+requirement = "REPO-04"
+reason = """The repository still carries its name from before the naming grammar. \
+musher-dev/infra-github applies the new name; the declaration follows it."""
+tracking = "https://github.com/musher-dev/development-container/issues/28"
+expires = "2027-03-31"
+
+[[waivers]]
+requirement = "REPO-09"
+reason = """The repository still carries its name from before the naming grammar. \
+musher-dev/infra-github applies the new name; the declaration follows it."""
+tracking = "https://github.com/musher-dev/development-container/issues/28"
+expires = "2027-03-31"

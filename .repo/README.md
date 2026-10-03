@@ -1,7 +1,8 @@
 # `.repo/` — Repository Governance
 
-The structural policies this repo enforces on itself, and the `repo` CLI that
-runs them.
+The repository's declarations, the scaffold-specific policies this repo
+enforces on itself, and the `repo` CLI that runs them and manages the dev
+environment's `.env`.
 
 The `.repo/` prefix mirrors `.github/` and `.devcontainer/`: infrastructure that
 operates on the repository rather than being part of its content. It is
@@ -15,6 +16,14 @@ repo scaffolded from it, so a convention that holds only while someone remembers
 it will not hold. The policies here turn the layout rules into something that
 fails a build instead of a code review.
 
+The general rules -- layout, `.config/`, workflows, rulesets, the toolchain, the
+env schema's shape -- moved to
+[engineering-conventions](https://github.com/musher-dev/engineering-conventions),
+which this repository pins in `.config/mise/config.toml` and runs with
+`conventions check` ([decision 0001](../docs/decisions/0001-the-scaffold-is-published-as-a-pinned-image.md)).
+What stays here is specific to this scaffold. A new repository pins that
+release; it does not copy this directory.
+
 That choice has a cost worth stating: a checker enforces *what*, not *why*. So
 every violation this CLI reports carries its own rationale and the action that
 resolves it — the `reason` and `fix` fields are not decoration, they are the
@@ -25,14 +34,15 @@ documentation. The prose version lives in
 
 ```bash
 task repo:check            # every policy (this is what CI and pre-commit run)
-task repo:check:config     # one policy
+task repo:check:ports      # one policy
 repo check                 # same thing, without Task
-repo config check
+repo ports check
 ```
 
 The CLI is installed by the devcontainer bootstrap
-(`base_install_repo_cli` in `.devcontainer/scripts/lib/base-setup.sh`, which
-runs `uv tool install ./.repo`). To reinstall after editing it:
+(`base_install_repo_cli` in `.devcontainer/image/scripts/lib/base-setup.sh`,
+which runs `uv tool install ./.repo`; a repository without `.repo/` gets it
+from the release its image came from). To reinstall after editing it:
 `task repo:install` — it passes `--reinstall`, because uv otherwise reuses the
 cached build of an unchanged version and your edit never takes effect.
 
@@ -40,23 +50,26 @@ cached build of an unchanged version and your edit never takes effect.
 
 | Policy | Codes | Enforces |
 | --- | --- | --- |
-| `config` | `CFG-01`..`CFG-09` | Tool config lives in `.config/<concern>/` buckets, every file is indexed and has a caller, every caller's path exists, nothing at the root shadows it, no executables |
-| `layout` | `LAYOUT-01`..`LAYOUT-11` | The root holds no product content; the declared product dir exists, is named after the repo, has its manifest and `env.schema.yaml`; mounts, Dependabot and `PRODUCT_DIR` agree with the declaration ([LAYOUT.md](../LAYOUT.md#invariants)) |
-| `paths` | `PATH-01`..`PATH-04` | Every lefthook glob, `.gitattributes` pattern, paths-filter, `working-directory`, Dependabot directory and Taskfile path var still names something |
-| `env` | `ENV-01` | Every `env.schema.yaml` has the shared shape ([LAYOUT.md](../LAYOUT.md#the-env-contract)) |
-| `ports` | `PORT-01`..`PORT-05` | The port table, `forwardPorts`/`portsAttributes`, and compose published ports all agree and stay in the reserved range |
+| `layout` | `LAYOUT-07` | Dev container workspace mounts sit under the declared product, and the editor links name it ([LAYOUT.md](../LAYOUT.md#invariants)) |
+| `paths` | `PATH-01`, `PATH-04` | Every `.gitattributes` pattern, paths-filter and `.claude/rules` `paths:` glob still matches a file, and the allowlist stays honest |
+| `env` | `ENV-03`..`ENV-05` | The dev-environment schema and the compose stacks agree: every `${VAR}` is declared, every consumer is a stack that reads it, every mirrored value matches |
+| `ports` | `PORT-01`..`PORT-05` | The port table, `forwardPorts`/`portsAttributes`, and compose published ports all agree, and forwarded ports stay in the reserved range |
 | `hooks` | `HOOK-01`..`HOOK-04` | Every lefthook job has a CI counterpart and vice versa, or a recorded reason why not |
-| `rulesets` | `RS-01`..`RS-04` | Committed branch rulesets stay valid and in step with the CI jobs they require |
-| `toolchain` | `TC-01`..`TC-03` | The tools the image bakes stay out of the Features block, keep exact pins, and stay in step with CI |
 | `comments` | `CMT-01`..`CMT-03` | Comment blocks stay short, the allowlist stays honest, and every `docs:` pointer still resolves |
 
-### Why `toolchain` exists
+### What engineering-conventions took over
 
-`TC-01` is the policy least likely to be guessed from the code it guards: bun, uv and
-task are installed by [`.devcontainer/Dockerfile`](../.devcontainer/Dockerfile) rather
-than by their Features, because those Features fail on rate-limited build hosts.
-Re-adding one looks like a harmless simplification, which is exactly why it is a check.
-Full account: [`CONFIGURATION.md`](../CONFIGURATION.md) → "Runtimes & Tools".
+| Retired here | engineering-conventions |
+| --- | --- |
+| `LAYOUT-01`..`06`, `08`, `09` | `REPO-14`..`21` |
+| `LAYOUT-10`, `LAYOUT-11` | `ENVS-01`, `ENVS-02` |
+| `PATH-01` (lefthook globs), `PATH-02`, `PATH-03` | `HOOKS-11`, `GHA-45` + `REPO-22`, `TASK-08` |
+| `CFG-01`..`CFG-09` | `CONF-01`..`CONF-09` |
+| `ENV-01`, `ENV-06`, `ENV-07` | `ENVS-03`, `ENVS-15`, `ENVS-06` |
+| `ENV-02` (`.env.example` freshness) | Retired with the file: no environment file is committed (`ENVS-26`) |
+| `RS-01`..`RS-04` | `BRANCH-01`..`04`, `GHA-14`..`16` |
+| `TC-01`..`TC-03` | `TOOL-01`, `TOOL-04`, `TOOL-05`, `TOOL-06`, `TOOL-10` |
+| `PORT-05` (compose half) | `DEVC-13` |
 
 ### The one-way-check tables
 
@@ -65,7 +78,8 @@ explicit. `LOCAL_ONLY` and `CI_ONLY` in
 [`policies/hooks/check.py`](governance/policies/hooks/check.py) list
 every check that deliberately runs in only one place, each with a reason —
 `build` is minutes long, `compose` needs a Docker daemon, `block-devcontainer-env`
-has nothing to assert in CI. Adding a job on either side without registering it
+has nothing to assert in CI, and `committed` is mirrored by the pull request
+title check. Adding a job on either side without registering it
 fails `HOOK-01`/`HOOK-03`, and an entry that outlives what it excused fails
 `HOOK-04`. The allowlist cannot quietly widen.
 
@@ -74,14 +88,17 @@ fails `HOOK-01`/`HOOK-03`, and an entry that outlives what it excused fails
 ```text
 .repo/
   pyproject.toml                 uv project; declares the `repo` console-script
-  layout.toml                    The product declaration -- this repo's data
+  repository.toml                Identity and [layout] (REPO-01, REPO-14) -- this repo's data
+  conventions.toml               Waivers for engineering-conventions -- this repo's data
+  outputs.toml                   What this repo publishes (OUT-01) -- this repo's data
   tests/                         pytest suite; fixtures are built in tmp_path
   governance/
     cli.py                       Argument parsing and exit codes
     reporting.py                 The Violation record and its rendering
     repo.py                      Repo-root discovery, YAML/JSONC/TOML readers, tracked files
     globs.py                     Glob matching shared by the path policies
-    envschema.py                 The shared env.schema.yaml shape
+    dotenv.py                    Reading and writing .devcontainer/.env
+    envtools.py                  `repo env doctor|sync|setup`
     policies/
       __init__.py                The policy registry
       <name>/
@@ -100,15 +117,15 @@ the package sits in the working directory -- and this one sits under `.repo/`,
 which is never where anyone works. `.repo/` already provides the separation,
 so `src/` would only add a level to every path.
 
-`layout.toml` is the one file under `.repo/` that belongs to the repository
-rather than the template: `governance/` is code that syncs from the template,
-`layout.toml` is what this repository declares about itself. Keeping them apart
-is what lets the code update without merge conflicts.
+The three `.toml` declarations belong to the repository rather than the
+template: `governance/` is code, the declarations are what this repository says
+about itself. Keeping them apart is what lets the code update without merge
+conflicts.
 
 ## Tests
 
-Most `layout` rules only fire once a product is declared, which the template
-never does, so `repo check` passing here proves little about them. The suite
+`LAYOUT-07`'s editor-link half only fires once a product is declared, which the
+template never does, so `repo check` passing here proves little about it. The suite
 builds a throwaway git repository per case and asserts each code fires:
 
 ```bash
@@ -129,18 +146,19 @@ task repo:test             # uv run --project .repo --group dev pytest .repo/tes
 ## The `env` group
 
 `env` is the one policy with developer commands beside its check, because the
-schema it validates is also what renders `.devcontainer/.env.example` and what
-tells a developer which values are still missing:
+schema it checks against the stacks is also what writes
+`.devcontainer/.env` and tells a developer which values are still missing:
 
 ```bash
-repo env check     # policy: shape, rendering freshness, compose parity (CI)
+repo env check     # policy: compose parity (CI)
+repo env sync      # local: write .env from the schema, or add what it gained;
+                   #        mint local secrets; fill `source: host` bindings
 repo env doctor    # local: what the enabled stacks still need
 repo env setup     # local: fill it in, interactively
-repo env sync      # local: add new bindings, mint local secrets
-repo env render    # local: rewrite .env.example from the schema
 ```
 
-The check half is blocking and reads only tracked files. The other four read
-the developer's gitignored `.env`, so they are never part of `repo check`.
-This is also what retired `.devcontainer/scripts/lib/env-check.sh`, whose
-parity job ENV-02 now does from the schema.
+The check half is blocking and reads only tracked files. The others read and
+write the developer's gitignored `.env`, so they are never part of
+`repo check`. post-create runs `repo env sync` on every create; `--force`
+rewrites the file from the schema. Why the file is generated in the container
+rather than committed: [decision 0002](../docs/decisions/0002-the-dev-env-file-is-generated-in-the-container.md).

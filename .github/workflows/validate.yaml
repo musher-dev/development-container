@@ -1,114 +1,185 @@
 name: Validate
 
+# Decides whether a change may merge. The one context the ruleset requires is
+# `Validate / Required`, which fails unless every other job succeeded (GHA-14,
+# GHA-16). Only it leads with the workflow's name: a ruleset matches the job
+# name alone, so a required context must be unique across the repository.
+#
+# Every job here has a lefthook counterpart or a reason it has none -- `repo
+# hooks check` (.repo/governance/policies/hooks/check.py) holds the table.
+
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+  merge_group:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   shellcheck:
     name: ShellCheck
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
       - name: Run ShellCheck
-        uses: ludeeus/action-shellcheck@2.0.0
+        uses: ludeeus/action-shellcheck@00cae500b08a931fb5698e11e79bfbd38e612a38  # 2.0.0
         env:
           SHELLCHECK_OPTS: -x --source-path=SCRIPTDIR
         with:
-          scandir: .devcontainer/scripts
+          scandir: .devcontainer/image/scripts
 
   compose:
     name: Compose Config
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      # Tool versions resolve from .config/mise/config.toml, the file the
+      # container uses. Its version is the configuration's min_version (TOOL-04).
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c  # v4.3.0
+        with:
+          version: 2026.8.6
+      - name: Write .env from the schema
+        # The same command post-create runs; nothing commits a .env (ENVS-26).
+        run: |
+          uv tool install ./.repo
+          repo env sync
       - name: Validate compose config
         run: |
-          cp .devcontainer/.env.example .devcontainer/.env
           # --env-file is mandatory, not decorative: the orchestrator lives under
-          # stacks/ and is no longer a sibling of .env, so Compose's positional
-          # auto-discovery would silently fall back to ${VAR:-default}.
+          # stacks/ and is no sibling of .env, so Compose's auto-discovery would
+          # silently fall back to ${VAR:-default}.
           docker compose --env-file .devcontainer/.env \
             -f .devcontainer/stacks/compose.yaml config --quiet
       - name: Validate compose config with every profile enabled
         run: |
           # `config` respects profiles, so the run above only covers the always-on
-          # stacks. Enable all of them so an opt-in stack cannot rot unnoticed --
-          # and so a broken --env-file surfaces here rather than at someone's
-          # first `Reopen in Container`.
+          # stacks. Enable all of them so an opt-in stack cannot rot unnoticed.
           COMPOSE_PROFILES=redis,minio,registry,azimutt,observability \
             docker compose --env-file .devcontainer/.env \
               -f .devcontainer/stacks/compose.yaml config --quiet
-      - name: Reject floating image tags
-        run: |
-          # Fail on :latest / :main tags that are not digest-pinned (@sha256:...).
-          if grep -rnE 'image:.*(:latest|:main)([[:space:]]|$)' \
-               .devcontainer/stacks/; then
-            echo "::error::Floating image tag found. Pin to a version or digest." >&2
-            exit 1
-          fi
-
-  lockfile:
-    name: Devcontainer Lockfile
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v7
-      - name: Enforce devcontainer-lock.json is current
-        # --frozen-lockfile fails if the committed lock is missing or its
-        # resolved Feature digests drift from devcontainer.json.
-        run: npx -y @devcontainers/cli build --workspace-folder . --frozen-lockfile
 
   lint:
     name: Lint
     runs-on: ubuntu-24.04
-    # Tool versions resolve from .devcontainer/mise.toml -- the same file the
-    # container uses -- so CI and local can never drift.
-    env:
-      MISE_GLOBAL_CONFIG_FILE: ${{ github.workspace }}/.devcontainer/mise.toml
-      MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
-      - name: Install pinned lint tools
-        uses: jdx/mise-action@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          install: true
-          cache: true
-      - name: Install Task
-        uses: arduino/setup-task@v3
+          persist-credentials: false
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c  # v4.3.0
         with:
-          # Keep in lockstep with ARG TASK_VERSION in .devcontainer/Dockerfile.
-          version: 3.52.0
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          version: 2026.8.6
       - name: Run every lint gate
-        run: task lint:all
+        run: task lint
+
+  conventions:
+    name: Conventions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c  # v4.3.0
+        with:
+          version: 2026.8.6
+      # The same command a developer runs locally. --fail-on warning holds the
+      # repository to every enforced family (.repo/conventions.toml).
+      - name: Check the repository against its conventions
+        run: conventions check --fail-on warning
+      # IMAGE-06 and IMAGE-10: every Dockerfile passes hadolint.
+      - name: Lint the Dockerfiles
+        run: conventions hadolint --config .config/docker/hadolint.yaml
 
   governance:
     name: Repo Structure
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
-      - name: Install uv
-        uses: astral-sh/setup-uv@v10.0.0
-      - name: Install the repo governance CLI
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c  # v4.3.0
+        with:
+          version: 2026.8.6
+      - name: Install the repo CLI
         run: uv tool install ./.repo
-      - name: Check repo structure policies
+      - name: Check the scaffold's own policies
         run: repo check
       - name: Test the policies
-        # Most layout rules only fire once a product is declared, which the
-        # template never does -- the suite is what keeps them honest.
         run: uv run --project .repo --group dev pytest .repo/tests
+
+  dev_container:
+    name: Dev Container Lockfiles
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      # Proves both configurations still build (DEVC-10). --frozen-lockfile
+      # fails when a devcontainer-lock.json no longer matches its config.
+      - name: Build the template's dev container
+        run: npx -y @devcontainers/cli@0.89.0 build --workspace-folder . --frozen-lockfile
+      - name: Build the published image's definition
+        run: >-
+          npx -y @devcontainers/cli@0.89.0 build --workspace-folder .
+          --config .devcontainer/image/devcontainer.json --frozen-lockfile
 
   build:
     name: Devcontainer Build
     runs-on: ubuntu-24.04
+    timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v7
-      - name: Build devcontainer
-        uses: devcontainers/ci@v0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          # Asserts the Dockerfile-baked tools report their pinned versions --
-          # the runtime half of the split the Dockerfile's presence-only
-          # `test -x` assertions leave open.
-          runCmd: bash .devcontainer/scripts/verify-toolchain.sh
+          persist-credentials: false
+      - name: Build the dev container and run its lifecycle
+        uses: devcontainers/ci@513af61f4de4f75d37e4438f184ba4358f0fc1ca  # v0.3.1900000450
+        with:
+          # Runs after post-create, so it proves mise installed every pin.
+          runCmd: bash .devcontainer/image/scripts/verify-toolchain.sh
+
+  required:
+    name: Validate / Required
+    if: always()
+    needs:
+      - shellcheck
+      - compose
+      - lint
+      - conventions
+      - governance
+      - dev_container
+      - build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      # Every job above is unconditional, so anything but success is a
+      # failure: a skipped job has proved nothing.
+      - name: Fail unless every job succeeded
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          set -euo pipefail
+          failed=0
+          while read -r job result; do
+            echo "${job}: ${result}"
+            if [ "$result" != "success" ]; then
+              echo "::error title=Validate / Required::job '${job}' reported '${result}'; only success passes"
+              failed=1
+            fi
+          done < <(jq -r 'to_entries[] | "\(.key) \(.value.result)"' <<<"$RESULTS")
+          exit "$failed"

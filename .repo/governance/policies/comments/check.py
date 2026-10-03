@@ -27,14 +27,12 @@ ALLOWED_LONG_BLOCKS: dict[str, str] = {}
 #: Where comments sit next to code. Markdown is absent on purpose: `#` starts a
 #: heading there, not a comment.
 SCAN_GLOBS = (
-    ".devcontainer/Dockerfile",
-    ".devcontainer/.dockerignore",
-    ".devcontainer/.env.example",
-    ".devcontainer/*.toml",
+    ".devcontainer/**/Dockerfile",
     ".devcontainer/**/*.sh",
     ".devcontainer/**/*.yaml",
     ".config/*.yml",
-    ".config/*.yaml",
+    ".config/**/*.yaml",
+    ".config/**/*.toml",
     ".github/**/*.yml",
     ".github/**/*.yaml",
     "taskfiles/*.yml",
