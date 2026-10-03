@@ -1,8 +1,10 @@
 # Dependabot keeps the dev container supply chain fresh.
 # Docs: https://containers.dev/guide/dependabot
 #
-# - devcontainers  : bumps Features in devcontainer.json AND refreshes
-#                    .devcontainer/devcontainer-lock.json (digest pins).
+# - devcontainers  : bumps Features in both devcontainer.json files AND
+#                    refreshes their devcontainer-lock.json (digest pins).
+#
+# Titles are `chore(deps): ...`, which .config/commits/committed.toml accepts.
 # - github-actions : bumps the actions pinned in .github/workflows/.
 # - docker         : bumps the image tags in the compose files.
 version: 2
@@ -12,7 +14,8 @@ updates:
     schedule:
       interval: "weekly"
     commit-message:
-      prefix: "devcontainer"
+      prefix: "chore"
+      include: "scope"
 
   # A product's own ecosystem (cargo, npm, uv, gomod ...) scans the product
   # directory, never "/" -- LAYOUT-08. See LAYOUT.md → "Ecosystem Adapters".
@@ -24,23 +27,25 @@ updates:
     schedule:
       interval: "weekly"
     commit-message:
-      prefix: "ci"
+      prefix: "chore"
+      include: "scope"
 
-  # Docker images. /.devcontainer covers the Dockerfile's `FROM` base image;
+  # Docker images. /.devcontainer/image covers the Dockerfile's `FROM` base image;
   # /.devcontainer/stacks/** covers each stack's own standard-named compose.yaml
   # (pulled into stacks/compose.yaml via `include:`). The orchestrator itself
   # declares no images. If Dependabot does not surface PRs for a stack, verify
   # detection under Insights -> Dependency graph -> Dependabot and adjust these
   # directories.
   #
-  # Note: this does NOT cover the tool pins in the Dockerfile's ARGs (bun, uv,
-  # task, mise) -- Dependabot has no ecosystem for those. Bump them by hand;
-  # `repo toolchain check` keeps them exact and in step with CI.
+  # Note: this does NOT cover ARG MISE_VERSION or the pins in
+  # .config/mise/config.toml -- Dependabot has no ecosystem for those. Bump them
+  # by hand and re-run `mise lock`.
   - package-ecosystem: "docker"
     directories:
-      - "/.devcontainer"
+      - "/.devcontainer/image"
       - "/.devcontainer/stacks/**"
     schedule:
       interval: "weekly"
     commit-message:
-      prefix: "docker"
+      prefix: "chore"
+      include: "scope"

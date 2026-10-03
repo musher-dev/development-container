@@ -1,0 +1,4 @@
+# hadolint — Dockerfile lint (IMAGE-07). Docs: https://github.com/hadolint/hadolint
+# Run by the pre-commit `dockerfile` job, `task lint:docker` and the Validate
+# workflow's Conventions job (`conventions hadolint`).
+failure-threshold: warning

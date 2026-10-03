@@ -10,6 +10,9 @@ version: '3'
 # The env:* tasks wrap `repo env`, whose source of truth is
 # .devcontainer/env.schema.yaml -- CONFIGURATION.md → "Environment Variables".
 #
+# setup, lint and check are the verbs every Musher repository answers to
+# (TASK-10).
+#
 # Project-specific tasks belong in a Taskfile.yml inside the consuming repo.
 
 includes:
@@ -23,13 +26,40 @@ vars:
   # `dir: '{{.PRODUCT_DIR}}'` (LAYOUT-09 checks it). See LAYOUT.md.
   # PRODUCT_DIR: '{{.ROOT_DIR}}/<product>'
   ENV_FILE: .devcontainer/.env
-  ENV_EXAMPLE: .devcontainer/.env.example
 
 tasks:
-  tools:install:
-    desc: Install every pinned CLI from .devcontainer/mise.toml (AI CLIs, lefthook, linters).
+  setup:
+    desc: Install the pinned CLIs, the git hooks and .devcontainer/.env (post-create runs the same).
     cmds:
-      - mise install
+      - mise install --locked
+      - lefthook install
+      - repo env sync
+
+  lint:
+    desc: Run every lint check (markdown, yaml, actions, spelling, Dockerfiles).
+    cmds:
+      - task: lint:all
+
+  check:
+    desc: >-
+      Run every gate CI runs that can run here -- lint, the scaffold's own
+      policies and their tests, and engineering-conventions. CI alone also
+      builds the dev container and validates the compose stacks.
+    cmds:
+      - task: lint
+      - task: repo:check
+      - task: repo:test
+      - task: conventions
+
+  conventions:
+    desc: Check the repository against the pinned engineering-conventions release.
+    cmds:
+      - conventions check --fail-on warning
+
+  tools:install:
+    desc: Install every pinned CLI from .config/mise/config.toml (toolchain, AI CLIs, lefthook, linters).
+    cmds:
+      - mise install --locked
 
   tools:doctor:
     desc: Show mise-managed tool versions and diagnose the toolchain.
@@ -40,7 +70,7 @@ tasks:
   stacks:restart:
     desc: Bring the compose stacks up to match the current .env (skips stacks missing a value).
     cmds:
-      - bash .devcontainer/scripts/startup.sh
+      - bash .devcontainer/image/scripts/startup.sh
 
   env:setup:
     desc: Fill in the values the enabled stacks need, interactively.
@@ -54,14 +84,9 @@ tasks:
       - repo env doctor
 
   env:sync:
-    desc: Add bindings the schema has gained to .env, and mint local secrets. Never overwrites.
+    desc: Write .env from the schema, or add the bindings it has gained, and mint local secrets. Never overwrites.
     cmds:
       - repo env sync
-
-  env:render:
-    desc: Re-render .devcontainer/.env.example from .devcontainer/env.schema.yaml.
-    cmds:
-      - repo env render
 
   env:check:
     desc: Alias of env:doctor, kept for muscle memory.
@@ -69,16 +94,13 @@ tasks:
       - task: env:doctor
 
   env:reset:
-    desc: Re-copy the generated .env.example over .env (destroys local values). Prompts first.
+    desc: Rewrite .env from the schema (destroys local values). Prompts first.
     silent: true
     cmds:
       - |
-        if [[ -f "{{.ENV_FILE}}" ]]; then
-          read -r -p "Overwrite {{.ENV_FILE}} with the template? [y/N] " confirm
-          case "${confirm}" in
-            y|Y|yes|YES) ;;
-            *) echo "Aborted."; exit 1 ;;
-          esac
-        fi
-        cp "{{.ENV_EXAMPLE}}" "{{.ENV_FILE}}"
-        echo "Wrote {{.ENV_FILE}} from {{.ENV_EXAMPLE}}."
+        read -r -p "Overwrite {{.ENV_FILE}} from the schema? [y/N] " confirm
+        case "${confirm}" in
+          y|Y|yes|YES) ;;
+          *) echo "Aborted."; exit 1 ;;
+        esac
+      - repo env sync --force

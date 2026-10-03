@@ -1,0 +1,21 @@
+# committed — commit message rules (COMMIT-01). Docs: https://github.com/crate-ci/committed
+# The commit-msg hook (.config/lefthook.yml) and the pull request title check
+# (.github/workflows/validate-pull-request.yaml) both read this file.
+style = "conventional"
+subject_length = 72
+line_length = 0
+subject_capitalized = false
+subject_not_punctuated = true
+imperative_subject = true
+no_fixup = false
+no_wip = true
+allowed_types = ["feat", "fix", "perf", "docs", "chore", "refactor", "test", "ci", "build"]
+allowed_scopes = [
+  "devcontainer",  # .devcontainer/ -- the image, its scripts, the template config
+  "stacks",        # .devcontainer/stacks/ -- the compose stacks
+  "config",        # .config/ -- tool configuration
+  "repo",          # .repo/, docs, Taskfiles -- repository machinery
+  "ci",            # .github/ -- workflows and rulesets
+  "deps",          # dependency updates (Dependabot)
+  "release",       # release pull requests (release-please)
+]

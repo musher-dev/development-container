@@ -1,4 +1,4 @@
-"""The developer-facing half: rendering, profile-aware requiredness, sync."""
+"""The developer-facing half: profile-aware requiredness, sync, and compose parity."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import json
 import pytest
 
 from conftest import codes
-from governance import dotenv, envtools, repo
+from governance import dotenv, envtools
 from governance.policies.env import run as env_check
 
 SCHEMA = """
@@ -87,12 +87,6 @@ def test_render_round_trips_through_the_parser(make_repo):
     assert dotenv.parse(rendered) == {"COMPOSE_PROFILES": "", "REDIS_PASSWORD": ""}
 
 
-def test_render_check_reports_drift(make_repo, capsys):
-    _repo(make_repo, **{".devcontainer/.env.example": "COMPOSE_PROFILES=\n"})
-    assert envtools.render(argparse.Namespace(check=True)) == 1
-    assert "drifted" in capsys.readouterr().out
-
-
 def test_sync_adds_new_bindings_and_keeps_live_values(make_repo):
     path = _repo(make_repo, env="COMPOSE_PROFILES=redis\n")
     envtools.sync(argparse.Namespace())
@@ -109,24 +103,6 @@ def test_sync_mints_generated_secrets_once(make_repo):
     envtools.sync(argparse.Namespace())
     assert dotenv.parse((path / ".devcontainer/.env").read_text())["REDIS_PASSWORD"] == first
     assert len(first) == 32
-
-
-@pytest.mark.parametrize(
-    ("kind", "value", "ok"),
-    [("list", "redis", True), ("list", "nope", False), ("int", "12", True), ("int", "x", False),
-     ("bool", "true", True), ("bool", "maybe", False), ("url", "http://a", True), ("url", "a", False)],
-)
-def test_value_validation(kind, value, ok):
-    binding = {"type": kind, "values": ["redis"] if kind == "list" else None}
-    assert (envtools.invalid(binding, value) is None) is ok
-
-
-def test_policy_accepts_the_matching_pair(make_repo):
-    _repo(make_repo)
-    rendered = dotenv.render(envtools.schema(), envtools.HEADER)
-    (repo.repo_root() / ".devcontainer/.env.example").write_text(rendered, encoding="utf-8")
-    repo.tracked_files.cache_clear()
-    assert env_check().violations == []
 
 
 def test_policy_flags_undeclared_compose_reference(make_repo):
@@ -149,24 +125,62 @@ def test_policy_flags_mirror_drift(make_repo):
     assert "ENV-05" in codes(env_check())
 
 
-def test_policy_flags_missing_codespaces_secret(make_repo):
-    _repo(make_repo, schema=SCHEMA.replace("    required: true\n", "    required: true\n    source: host\n"))
-    assert "ENV-06" in codes(env_check())
+def test_sync_writes_a_missing_env_from_the_schema(make_repo):
+    path = _repo(make_repo)
+    (path / ".devcontainer/.env").unlink()
+    envtools.sync(argparse.Namespace())
+    text = (path / ".devcontainer/.env").read_text()
+    assert text.startswith(envtools.HEADER.strip().splitlines()[0])
+    assert dotenv.parse(text) == {"COMPOSE_PROFILES": "", "REDIS_PASSWORD": ""}
 
 
-def test_policy_flags_committed_secret_default(make_repo):
-    schema = SCHEMA.replace(
-        "    required: true\n    sensitivity: internal\n",
-        "    local_default: hunter2\n    sensitivity: secret\n",
-    )
-    _repo(make_repo, schema=schema)
-    assert "ENV-07" in codes(env_check())
+def test_sync_force_discards_local_values(make_repo):
+    path = _repo(make_repo, env="COMPOSE_PROFILES=redis\nREDIS_PASSWORD=x\n")
+    envtools.sync(argparse.Namespace(force=True))
+    assert dotenv.parse((path / ".devcontainer/.env").read_text())["COMPOSE_PROFILES"] == ""
 
 
-def test_policy_allows_loopback_secret_default(make_repo):
-    schema = SCHEMA.replace(
-        "    required: true\n    sensitivity: internal\n",
-        "    local_default: postgres://localhost:5432\n    sensitivity: secret\n",
-    )
-    _repo(make_repo, schema=schema)
-    assert "ENV-07" not in codes(env_check())
+def test_sync_takes_host_sourced_values_from_the_environment(make_repo, monkeypatch):
+    schema = SCHEMA.replace("    required: true\n", "    required: true\n    source: host\n")
+    path = _repo(make_repo, schema=schema)
+    monkeypatch.setenv("REDIS_PASSWORD", "from-codespaces")
+    envtools.sync(argparse.Namespace())
+    assert dotenv.parse((path / ".devcontainer/.env").read_text())["REDIS_PASSWORD"] == "from-codespaces"
+
+
+def test_sync_never_overwrites_a_host_sourced_value(make_repo, monkeypatch):
+    schema = SCHEMA.replace("    required: true\n", "    required: true\n    source: host\n")
+    path = _repo(make_repo, env="REDIS_PASSWORD=mine\n", schema=schema)
+    monkeypatch.setenv("REDIS_PASSWORD", "from-codespaces")
+    envtools.sync(argparse.Namespace())
+    assert dotenv.parse((path / ".devcontainer/.env").read_text())["REDIS_PASSWORD"] == "mine"
+
+
+@pytest.mark.parametrize(
+    ("kind", "length"), [("hex:16", 32), ("base64:3", 4), ("base64url:4", 6)],
+)
+def test_mint_encodings(kind, length):
+    assert len(envtools._mint(kind)) == length
+
+
+@pytest.mark.parametrize(
+    ("binding", "value", "ok"),
+    [
+        ({"type": "list", "values": ["redis"]}, "redis", True),
+        ({"type": "list", "values": ["redis"]}, "nope", False),
+        ({"type": "integer"}, "12", True),
+        ({"type": "integer"}, "x", False),
+        ({"type": "number"}, "1.5", True),
+        ({"type": "boolean"}, "true", True),
+        ({"type": "boolean"}, "maybe", False),
+        ({"type": "string", "format": "url"}, "http://a", True),
+        ({"type": "string", "format": "url"}, "a", False),
+    ],
+)
+def test_value_validation(binding, value, ok):
+    assert (envtools.invalid(binding, value) is None) is ok
+
+
+def test_policy_accepts_the_matching_stacks(make_repo):
+    _repo(make_repo)
+    assert env_check().violations == []

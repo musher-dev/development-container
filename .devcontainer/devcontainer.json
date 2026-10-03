@@ -1,12 +1,16 @@
 // Musher Dev Container — Batteries-included template.
 // Uncomment optional blocks as needed. Comment out what you don't use.
+//
+// This builds the image from source in image/, so the template tests its own
+// changes. Once a release is published, it becomes
+//   "image": "ghcr.io/musher-dev/development-container:<version>"
+// and drops everything the image's metadata already carries (the platform
+// Features, mounts, env and lifecycle commands) -- README.md → "Use the image".
 {
   "name": "Musher Dev",
-  // Dockerfile bakes the tools whose Features cannot be relied on; the
-  // Features below layer on top of it. Context is emptied by .dockerignore.
   "build": {
-    "dockerfile": "Dockerfile",
-    "context": "."
+    "dockerfile": "image/Dockerfile",
+    "context": "image"
   },
 
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind,consistency=cached",
@@ -41,9 +45,8 @@
       "installGradle": false,
       "installMaven": false
     },
-    // deno is safe as a Feature; bun, uv and task are not — do not re-add
-    // them. They are baked by the Dockerfile (TC-01 fails the build if they
-    // reappear here). Why: CONFIGURATION.md → "Runtimes & Tools".
+    // bun, uv and task are mise pins in .config/mise/config.toml, not
+    // Features. Why: CONFIGURATION.md → "Runtimes & Tools".
     "ghcr.io/devcontainers-extra/features/deno:1": { "version": "2.9.2" },
 
     // --- Linting ---
@@ -67,11 +70,6 @@
   // Allow debuggers (gdb, strace, delve) to attach to processes.
   "capAdd": ["SYS_PTRACE"],
 
-  // Load .devcontainer/.env into the container at `docker run` time so
-  // processes inside the container (shells, runtimes, task runs) see the
-  // same vars Docker Compose interpolates into service configs.
-  "runArgs": ["--env-file", "${localWorkspaceFolder}/.devcontainer/.env"],
-
   "mounts": [
     "source=musher-${devcontainerId}-gh-config,target=/home/vscode/.config/gh,type=volume",
     "source=musher-${devcontainerId}-claude-config,target=/home/vscode/.claude,type=volume",
@@ -84,18 +82,21 @@
   ],
 
   // Codespaces prompts for these at creation time. The block must list exactly
-  // the bindings declaring `source: host` in env.schema.yaml -- ENV-06 checks
-  // it, and initialize.sh fills the same keys from the host environment when
-  // you build locally.
+  // the bindings declaring `source: host` in env.schema.yaml (ENVS-15). Built
+  // locally, pass the same keys through remoteEnv as "${localEnv:KEY}";
+  // `repo env sync` copies them into .env either way.
   // "secrets": {
   //   "EXAMPLE_API_KEY": { "description": "...", "documentationUrl": "https://..." }
   // },
 
   "containerEnv": {
-    // Point mise at the workspace manifest (it lives under .devcontainer/, not
-    // the repo root) and auto-trust it so `mise install` runs without a prompt.
-    "MISE_GLOBAL_CONFIG_FILE": "${containerWorkspaceFolder}/.devcontainer/mise.toml",
+    // Auto-trust .config/mise/config.toml so `mise install` runs without a
+    // prompt. mise finds the file itself.
     "MISE_TRUSTED_CONFIG_PATHS": "${containerWorkspaceFolder}",
+
+    // Claude keeps .claude.json beside its config dir, so without this it
+    // lands in ~/ -- outside the claude volume -- and is lost on every rebuild.
+    "CLAUDE_CONFIG_DIR": "/home/vscode/.claude",
 
     "PYTHONUNBUFFERED": "1",
     "PYTHONDONTWRITEBYTECODE": "1",
@@ -113,24 +114,17 @@
   },
 
   "remoteEnv": {
-    // mise shims (codex, lefthook) + ~/.local/bin (Claude Code). The baked
-    // tools live in /usr/local/bin and are already on PATH.
+    // mise shims (task, uv, codex, lefthook, ...) + ~/.local/bin (Claude
+    // Code). mise itself is baked in /usr/local/bin.
     "PATH": "/home/vscode/.local/share/mise/shims:/home/vscode/.local/bin:${containerEnv:PATH}"
   },
 
-  // Host-side bootstrap: creates .devcontainer/.env from the template (if
-  // missing) and strips CRLF from it, so --env-file above has a valid target
-  // even on a fresh clone. .env is gitignored, so .gitattributes cannot
-  // normalize it -- this guard is not redundant with that.
-  "initializeCommand": ["bash", ".devcontainer/scripts/initialize.sh"],
-
+  // No initializeCommand: nothing runs on the host. post-create writes
+  // .devcontainer/.env from env.schema.yaml inside the container.
+  // Line endings are enforced repo-wide by .gitattributes (`* text=auto eol=lf`).
   "waitFor": "postCreateCommand",
-  // Line endings are enforced repo-wide by .gitattributes (`* text=auto eol=lf`),
-  // so scripts arrive with LF on every platform. No CRLF fixup step is needed
-  // here; the one remaining guard lives in initialize.sh and covers the
-  // gitignored .env, which .gitattributes cannot reach.
-  "postCreateCommand": ["bash", ".devcontainer/scripts/post-create.sh"],
-  "postStartCommand": ["bash", ".devcontainer/scripts/startup.sh"],
+  "postCreateCommand": ["bash", ".devcontainer/image/scripts/post-create.sh"],
+  "postStartCommand": ["bash", ".devcontainer/image/scripts/startup.sh"],
 
   "forwardPorts": [15432, 15433, 15434, 15435, 15436, 15440, 15441, 15442, 15443, 15444, 15445, 15446, 15447, 15448, 15460],
   "portsAttributes": {

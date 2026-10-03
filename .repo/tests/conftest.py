@@ -14,7 +14,7 @@ MINIMAL_DEVCONTAINER = json.dumps({"name": "fixture", "mounts": []})
 
 #: A clean, fully adapted product repo: the state every layout rule accepts.
 HOST_AGENT = {
-    ".repo/layout.toml": 'product = "demo"\n',
+    ".repo/repository.toml": '[layout]\nproduct = "demo"\n',
     ".devcontainer/devcontainer.json": json.dumps({
         "mounts": [
             "source=x-target,target=/workspaces/${localWorkspaceFolderBasename}/demo/target,type=volume",
@@ -23,17 +23,7 @@ HOST_AGENT = {
             "rust-analyzer.linkedProjects": ["demo/Cargo.toml"],
         }}},
     }),
-    ".github/dependabot.yml": (
-        "version: 2\nupdates:\n"
-        "  - package-ecosystem: cargo\n    directory: /demo\n    schedule: {interval: weekly}\n"
-    ),
-    "Taskfile.yml": "version: '3'\nvars:\n  PRODUCT_DIR: '{{.ROOT_DIR}}/demo'\n",
     "demo/Cargo.toml": "[workspace]\n",
-    "demo/env.schema.yaml": (
-        "service: demo\nruntime: rust\nbindings:\n"
-        "  HOST_ID:\n    type: string\n    required: true\n"
-        "    sensitivity: internal\n    description: The host.\n"
-    ),
 }
 
 

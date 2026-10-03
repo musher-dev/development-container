@@ -72,8 +72,6 @@ def run() -> Report:
     for port in sorted(forwarded):
         if not RANGE_LOW <= port <= RANGE_HIGH:
             report.add(v.out_of_range(port, RANGE_LOW, RANGE_HIGH, DEVCONTAINER))
-    for port, source in sorted(published.items()):
-        if not RANGE_LOW <= port <= RANGE_HIGH:
-            report.add(v.out_of_range(port, RANGE_LOW, RANGE_HIGH, source))
+    # The compose half of the range rule is engineering-conventions' DEVC-13.
 
     return report

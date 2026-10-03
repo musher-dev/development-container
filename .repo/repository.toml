@@ -1,0 +1,22 @@
+# What this repository is (engineering-conventions REPO-01, EC-0009).
+# The name is the legacy one until musher-dev/infra-github renames the
+# repository; REPO-04 and REPO-09 are waived in .repo/conventions.toml until then.
+schema_version = 1
+name = "development-container"
+system = "engineering"
+component = "development-container"
+kind = "template"
+owner = "@musher-dev/engineering"
+lifecycle = "production"
+audience = "public"
+visibility = "public"
+tier = 2
+
+# The product level of this repo -- see LAYOUT.md "Declaring the Product".
+# Empty is the template's state: no product. Product-dependent rules skip; the
+# rule that the root holds no product content still applies (REPO-14..21).
+[layout]
+product = ""
+
+# Root entries REPO-18 would otherwise reject, each with a reason (REPO-19).
+[layout.root_exceptions]

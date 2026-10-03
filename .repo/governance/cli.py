@@ -1,14 +1,18 @@
 """The `repo` command.
 
     repo check            run every policy
-    repo config check     .config/ layout and liveness
-    repo layout check     repo root vs the declared product directory
-    repo paths check      configured globs and directories still resolve
-    repo env check        env schemas have the shared shape
+    repo layout check     dev container mounts and links vs the declared product
+    repo paths check      configured globs still match something
+    repo env check        the schema and the compose stacks agree
+    repo env sync         write .devcontainer/.env from the schema (local)
     repo env doctor       what the enabled stacks still need (local)
     repo env setup        fill it in, interactively (local)
     repo ports check      port declarations agree
     repo hooks check      local hooks and CI stay in step
+    repo comments check   comment blocks stay short and their pointers resolve
+
+The general rules this CLI once carried are engineering-conventions'
+(`conventions check`); what remains is specific to this scaffold.
 """
 
 from __future__ import annotations

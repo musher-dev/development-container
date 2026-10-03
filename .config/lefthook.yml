@@ -17,7 +17,7 @@
 
 assert_lefthook_installed: true
 
-# Keep in lockstep with the "npm:lefthook" pin in .devcontainer/mise.toml.
+# Keep in lockstep with the "npm:lefthook" pin in .config/mise/config.toml.
 # v2 is required for the `jobs` API and the `validate` subcommand.
 min_version: "2.1.10"
 
@@ -54,18 +54,18 @@ pre-commit:
         Staged .devcontainer/.env — it holds local secrets. Run
         'git restore --staged .devcontainer/.env'.
 
-    # ── Lint (configs in .config/, versions in .devcontainer/mise.toml) ──
+    # ── Lint (configs in .config/, versions in .config/mise/config.toml) ──
     # Each job passes its config path explicitly and runs only on the staged
     # files matching its glob, so a commit touching one Markdown file does not
     # relint the repo.
 
     - name: markdown
-      glob: "*.md"
+      glob: "**/*.md"
       run: markdownlint-cli2 --config .config/markdown/markdownlint.jsonc {staged_files}
       fail_text: "Markdown lint failed. Run 'task lint:md:fix', then re-stage."
 
     - name: yaml
-      glob: "*.{yml,yaml}"
+      glob: "**/*.{yml,yaml}"
       run: yamllint -c .config/yaml/yamllint.yaml {staged_files}
       fail_text: "YAML lint failed. See .config/yaml/yamllint.yaml for the active rules."
 
@@ -73,6 +73,11 @@ pre-commit:
       glob: ".github/workflows/*.{yml,yaml}"
       run: actionlint -config-file .config/actions/actionlint.yaml {staged_files}
       fail_text: "Workflow lint failed. Run 'task lint:actions' for the full output."
+
+    - name: dockerfile
+      glob: "**/{Dockerfile,*.Dockerfile}"
+      run: hadolint --config .config/docker/hadolint.yaml {staged_files}
+      fail_text: "hadolint found a problem in a staged Dockerfile. Run 'task lint:docker'."
 
     - name: governance
       # Structural policy (`repo check`). No glob: the layout policy reads
@@ -87,3 +92,18 @@ pre-commit:
       fail_text: >-
         Spelling check failed. Run 'task lint:spelling:fix' and review the
         diff, or add a justified entry to .config/spelling/codespell.cfg.
+
+# =============================================================================
+# COMMIT-MSG — the message follows .config/commits/committed.toml (COMMIT-03)
+# =============================================================================
+
+commit-msg:
+  skip:
+    - merge
+    - rebase
+  jobs:
+    - name: committed
+      run: committed --config .config/commits/committed.toml --commit-file {1}
+      fail_text: >-
+        The message must pass .config/commits/committed.toml. Run
+        'committed --config .config/commits/committed.toml --commit-file .git/COMMIT_EDITMSG'.

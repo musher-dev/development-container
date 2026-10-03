@@ -1,0 +1,11 @@
+# What this repository publishes (engineering-conventions OUT-01, EC-0007).
+schema_version = 2
+
+[[outputs]]
+id = "devcontainer-image"
+kind = "image"
+description = "The Musher dev container: mise, the platform Features, the config volumes and the lifecycle scripts, one image per release."
+source = ".devcontainer/image"
+publish_workflow = "release.yaml"
+location = "ghcr.io/musher-dev/development-container"
+docs = "README.md#use-the-image"

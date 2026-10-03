@@ -5,14 +5,16 @@ governance, and the documents people open first. One directory, named after the 
 *is built from*.
 
 This file decides **which level** a file belongs to. [CONFIGURATION.md](CONFIGURATION.md) decides where it goes
-*within* the repository level. What is mechanically enforced is listed under [Invariants](#invariants).
+*within* the repository level. What is mechanically enforced is listed under [Invariants](#invariants): most of it by
+[engineering-conventions][ec-layout] (`conventions check`, the REPO and ENVS families), the rest by this scaffold's
+own `repo check`.
 
 ## The Rule
 
 ```text
 <repo>/                         repository level: acts ON the product
 ├── .devcontainer/ .github/     integration homes whose location the tool mandates
-├── .config/  .repo/            repo tool config; governance (+ layout.toml)
+├── .config/  .repo/            repo tool config; declarations (repository.toml)
 ├── Taskfile.yml  taskfiles/    orchestration entry points
 ├── README.md  LAYOUT.md …      human entry points (AGENTS.md, docs/, SECURITY.md …)
 └── <repo>/                     product level: what the product is built from
@@ -61,44 +63,50 @@ level and points down: repository machinery may name product paths, but the prod
 
 ## Declaring the Product
 
-The product directory is declared once, in [`.repo/layout.toml`](.repo/layout.toml):
+The product directory is declared once, in the `[layout]` table of
+[`.repo/repository.toml`](.repo/repository.toml), the repository's identity declaration:
 
 ```toml
+[layout]
 product = "host-agent"
 ```
 
-- The value is a single path segment, and matches the repository name (`LAYOUT-03`).
+- The value is a single path segment, and matches the repository name (`REPO-16`).
 - `product = ""` means *no product*: the state this template ships in. Rules that need a product skip; the rule that
-  the root holds no product content still applies. A missing file or key is an error, not "no product", so deleting
-  the declaration cannot silently switch the rules off.
+  the root holds no product content still applies. A missing `[layout]` table is an error (`REPO-14`), not "no
+  product", so deleting the declaration cannot silently switch the rules off.
 - Nothing else can read this file: devcontainer.json, Dependabot and workflows need literal paths. So they state the
-  product path literally, and `repo layout check` fails if any of them disagrees with the declaration.
+  product path literally, and the checks fail if any of them disagrees with the declaration: `REPO-20` and `REPO-21`
+  for Dependabot and the Taskfile, and this scaffold's `repo layout check` (`LAYOUT-07`) for devcontainer.json.
 - The Taskfile carries it as `PRODUCT_DIR: '{{.ROOT_DIR}}/<product>'`. That name is used across the org;
   "workspace" means something specific to Cargo and pnpm.
 
 ## Root Exceptions
 
-A root file that `LAYOUT-05` would reject can be kept on purpose, with a reason, in `.repo/layout.toml`:
+A root file that `REPO-18` would reject can be kept on purpose, with a reason, in `.repo/repository.toml`:
 
 ```toml
-[root-exceptions]
+[layout.root_exceptions]
 "package.json" = "Repo-level tooling only (commitlint); the product has its own under host-agent/."
 ```
 
-An exception without a reason, or one whose file is gone, fails `LAYOUT-06`: the list cannot quietly widen.
+An exception without a reason, or one whose file is gone, fails `REPO-19`: the list cannot quietly widen.
 
 ## Invariants
 
 | # | Invariant | Enforced by |
 | --- | --- | --- |
-| 1 | Zero or one product directory, declared, existing, named after the repository | `LAYOUT-01`..`03` |
-| 2 | The product directory contains its build manifest | `LAYOUT-04` |
-| 3 | The root holds no manifest, lockfile, toolchain file, walk-up config or source tree | `LAYOUT-05`, `LAYOUT-06` |
-| 4 | Machinery names the product by literal path, and each literal agrees with the declaration; no product-ecosystem Dependabot update scans the manifest-free root | `LAYOUT-07`..`09` |
-| 5 | Every configured glob, directory and path var still resolves | `PATH-01`..`04`, `CFG-09` |
-| 6 | The product declares its env contract at `<product>/env.schema.yaml`, in the shared shape | `LAYOUT-10`, `LAYOUT-11`, `ENV-01` |
+| 1 | Zero or one product directory, declared, existing, named after the repository | `REPO-14`..`16` |
+| 2 | The product directory contains its build manifest | `REPO-17` |
+| 3 | The root holds no manifest, lockfile, toolchain file, walk-up config or source tree | `REPO-18`, `REPO-19` |
+| 4 | Machinery names the product by literal path, and each literal agrees with the declaration; no product-ecosystem Dependabot update scans the manifest-free root | `REPO-20`, `REPO-21`, `LAYOUT-07` |
+| 5 | Every configured glob, directory and path var still resolves | `HOOKS-11`, `GHA-45`, `REPO-22`, `TASK-08`, `CONF-09`, `PATH-01`, `PATH-04` |
+| 6 | The product declares its env contract at `<product>/env.schema.yaml`, in the shared shape | `ENVS-01`, `ENVS-02`, `ENVS-03` |
 | 7 | The product is self-contained: nothing in it references a path above it | Not yet enforced |
 | 8 | Build output lives under the product, on a volume where the dev container provides one | Placement only (`LAYOUT-07`) |
+
+`LAYOUT-07` and `PATH-01`/`PATH-04` are this scaffold's own (`repo check`, [`.repo/`](.repo/README.md)); every other
+ID is an [engineering-conventions][ec-layout] requirement, run by `conventions check`.
 
 Invariant 7 is documented rather than checked. A cheap detector scanning manifests for `../` would flag legitimate
 cases such as Cargo's `license-file = "../LICENSE"`, and a real escape surfaces loudly anyway: the product stops
@@ -107,8 +115,8 @@ building when checked out on its own. The silent failures are what the checks ta
 ## The Env Contract
 
 The environment a product reads at runtime is part of its interface, so it is declared beside the manifest:
-`<product>/env.schema.yaml`. Not in a `config/` folder: `LAYOUT-11` fails a schema anywhere else, `config/`
-included, and names the root location in its fix.
+`<product>/env.schema.yaml`. Not in a `config/` folder: `ENVS-02` fails a schema anywhere else, `config/`
+included.
 
 It is the canonical example of the placement test, because there are two env files with one word in common:
 
@@ -117,7 +125,7 @@ It is the canonical example of the placement test, because there are two env fil
 | `<product>/env.schema.yaml` | Product | The shipped product, at runtime |
 | `.devcontainer/env.schema.yaml` | Repository | The dev environment, see CONFIGURATION.md |
 
-Both share one minimal shape (`ENV-01`), the vocabulary Musher schemas already use:
+Both share one shape, engineering-conventions' env schema (`ENVS-03`):
 
 ```yaml
 service: host-agent
@@ -126,13 +134,14 @@ bindings:
   HOST_ID:
     type: string
     required: true
-    sensitivity: internal     # public | internal | secret
+    sensitivity: internal     # public | internal | confidential | secret
     description: UUID of the host row this agent represents.
 ```
 
-Top-level `service`, `runtime` and `bindings` are required; each binding needs `type`, `sensitivity` and
-`description`, and `required` must be a boolean when present. Any richer vocabulary a product needs (formats,
-generators, naming grammar) is its own to add; the shared check only asserts the common core.
+Top-level `service`, `runtime` and `bindings` are required; each binding needs `type` (`string`, `integer`, `number`,
+`boolean`, `enum` or `list`), `sensitivity` and a `description` of at least 24 characters. The full vocabulary
+(formats, `local_generate`, `source`, naming grammar) is engineering-conventions'; a developer's local `.env` is
+generated from the schema, never committed (`ENVS-26`).
 
 ## Why Moves Fail Silently
 
@@ -148,7 +157,8 @@ A layout change can preserve every line of code and still change what runs. None
 - **A build-output volume at the old path.** The build still works, now on the slow bind mount.
 - **Dependabot scanning `/`.** It finds no manifest and opens no PRs, which looks exactly like "nothing to update".
 
-That is why [Invariant](#invariants) 5 exists: `repo paths check` makes every such reference name something.
+That is why [Invariant](#invariants) 5 exists: `conventions check` and `repo paths check` make every such reference
+name something.
 
 ## Ecosystem Adapters
 
@@ -160,11 +170,11 @@ the others are the expected settings, to verify on first adoption and then recor
 | Tasks | `dir: '{{.PRODUCT_DIR}}'` on every task reaching cargo/rustup | `dir:` on npm/bun tasks | `dir:` on uv tasks | `dir:` on go tasks |
 | Build-output volume | `<product>/target` | `<product>/node_modules` | `<product>/.venv` | Module cache is already global |
 | Editor | `rust-analyzer.linkedProjects: ["<product>/Cargo.toml"]` (`LAYOUT-07`) | `eslint.workingDirectories` | `python.defaultInterpreterPath` | `go.work` at the product, or gopls `build.directoryFilters` |
-| Dependabot | `cargo`, `directory: /<product>` (`LAYOUT-08`) | `npm`/`bun` | `pip`/`uv` | `gomod` |
+| Dependabot | `cargo`, `directory: /<product>` (`REPO-20`) | `npm`/`bun` | `pip`/`uv` | `gomod` |
 | CI | `working-directory: <product>` on run steps; rust-cache `workspaces: <product> -> target` | `setup-node` `cache-dependency-path` | `setup-uv` `working-directory` | `setup-go` `go-version-file` |
 | Release | release-please `extra-files` on `<product>/Cargo.toml` and `Cargo.lock` | package path in config | package path in config | Tags carry the module path |
 
-Deno and Java follow the same shape. `LAYOUT-04` and `LAYOUT-05` recognise their manifests already.
+Deno and Java follow the same shape. `REPO-17` and `REPO-18` recognise their manifests already.
 
 A dev container mount for the product's build output looks like this:
 
@@ -190,19 +200,21 @@ Add a row when you find the next one.
 One structural PR, with no behaviour change riding along. The sequence host-agent used:
 
 1. `git mv` the manifest, lockfile, toolchain and native configs, sources and product inputs into `<repo>/`.
-2. Set `product = "<repo>"` in `.repo/layout.toml`.
+2. Set `product = "<repo>"` under `[layout]` in `.repo/repository.toml`.
 3. Add `PRODUCT_DIR` to the Taskfile, and `dir: '{{.PRODUCT_DIR}}'` to every task that reaches the native toolchain.
 4. Move the build-output mount and add the editor link in devcontainer.json.
 5. Point Dependabot at `/<repo>`; add `working-directory` and action inputs in CI; update release config.
-6. Run `repo check` until it is green. It lists every literal that still names the old layout.
+6. Run `conventions check` and `repo check` until both are green. They list every literal that still names the old
+   layout.
 7. Rebuild the dev container, so the build-output volume remounts at its new path.
 
 ## Out of Scope: Multi-Product Repos
 
 This pattern covers repositories with one product. A repository with several peer products, such as
 musher-dev/platform's `apps/` and `packages/` under a root `package.json`, is a different shape: its root *is* a
-workspace root. Such a repository either stays at `product = ""` with `[root-exceptions]` recording why, or does not
-adopt these checks. A multi-product variant will be designed when a second repository needs one.
+workspace root. Such a repository either stays at `product = ""` with `[layout.root_exceptions]` recording why, or
+takes engineering-conventions' multi-product waiver (`REPO-18`). A multi-product variant will be designed when a
+second repository needs one.
 
 ## Evidence
 
@@ -227,7 +239,10 @@ What other projects did, and what each case does and does not show.
   release-please component boundary. *Shows:* a nested build root can express a real ownership boundary.
 - **musher-dev/host-agent is the in-org reference.** [host-agent#23](https://github.com/musher-dev/host-agent/pull/23)
   moved its Cargo workspace into `host-agent/` and shipped `scripts/check-path-refs.py` with it, because every path
-  it missed failed silently. That script is where `repo paths check` came from.
+  it missed failed silently. That script is where `repo paths check`, and later `HOOKS-11` and `GHA-45`, came
+  from.
 
 No case found a defect in nesting itself. Every documented cost was a tool that equated "repository root" with
 "build root", which is what the gate and the checks here exist to catch.
+
+[ec-layout]: https://github.com/musher-dev/engineering-conventions/tree/v0.8.0

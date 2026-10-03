@@ -15,26 +15,20 @@ from collections.abc import Callable
 
 from governance.policies import (
     comments,
-    config,
     env,
     hooks,
     layout,
     paths,
     ports,
-    rulesets,
-    toolchain,
 )
 from governance.reporting import Report
 
 POLICIES: dict[str, Callable[[], Report]] = {
-    "config": config.run,
     "layout": layout.run,
     "paths": paths.run,
     "env": env.run,
     "ports": ports.run,
     "hooks": hooks.run,
-    "rulesets": rulesets.run,
-    "toolchain": toolchain.run,
     "comments": comments.run,
 }
 

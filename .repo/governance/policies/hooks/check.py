@@ -20,14 +20,19 @@ HOOK_TO_CI = {
     "yaml": "lint",
     "actions": "lint",
     "spelling": "lint",
+    "dockerfile": "conventions",
     "governance": "governance",
 }
 
-#: lefthook jobs with no CI counterpart, and why.
+#: lefthook jobs with no CI counterpart in validate.yaml, and why.
 LOCAL_ONLY = {
     "block-devcontainer-env": (
         "Guards against staging a gitignored secrets file. CI never has a "
         ".devcontainer/.env to stage, so the check has nothing to assert there."
+    ),
+    "committed": (
+        "Checks a commit message. A pull request squashes to its title, which "
+        "validate-pull-request.yaml checks against the same committed.toml."
     ),
 }
 
@@ -35,13 +40,18 @@ LOCAL_ONLY = {
 CI_ONLY = {
     "shellcheck": (
         "Runs against the whole scripts tree via a pinned action; the "
-        "equivalent local run would need shellcheck installed on every host."
+        "equivalent local run is `shellcheck` itself, which the image carries."
     ),
     "compose": (
         "Requires a Docker daemon to resolve `docker compose config`, which "
         "is not guaranteed inside the dev container."
     ),
-    "lockfile": (
+    "conventions": (
+        "`conventions check` reads the whole repository and its git history; "
+        "`task check` runs it locally, and the pre-commit `dockerfile` job "
+        "covers its hadolint half."
+    ),
+    "dev_container": (
         "Resolves every Feature digest over the network; too slow and too "
         "network-dependent for a pre-commit hook."
     ),
@@ -49,6 +59,7 @@ CI_ONLY = {
         "Builds the whole dev container image. Minutes, not seconds -- a "
         "pre-commit hook cannot absorb that."
     ),
+    "required": "The aggregate of every other job (GHA-14); it checks nothing itself.",
 }
 
 

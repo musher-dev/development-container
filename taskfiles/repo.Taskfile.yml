@@ -2,18 +2,14 @@ version: '3'
 
 # Repo-governance tasks. These wrap the `repo` CLI installed from .repo/
 # by the devcontainer bootstrap (uv tool install ./.repo).
-# See .repo/README.md for what each policy enforces and why.
+# See .repo/README.md for what each policy enforces and why; the general rules
+# are engineering-conventions' (`task conventions`).
 
 tasks:
   check:
-    desc: Run every repo-structure policy (config, layout, paths, env, ports, hooks, rulesets, toolchain, comments).
+    desc: Run the scaffold's own policies (layout, paths, env, ports, hooks, comments).
     cmds:
       - repo check
-
-  check:config:
-    desc: Verify .config/ layout, the README index, and no shadowing root config.
-    cmds:
-      - repo config check
 
   check:ports:
     desc: Verify the port table, forwardPorts, and compose published ports agree.
@@ -21,17 +17,17 @@ tasks:
       - repo ports check
 
   check:layout:
-    desc: Verify the root holds no product content and every product path agrees with .repo/layout.toml.
+    desc: Verify dev container mounts and editor links agree with the declared product.
     cmds:
       - repo layout check
 
   check:paths:
-    desc: Verify every configured glob, directory and Taskfile path var still resolves.
+    desc: Verify the .gitattributes, paths-filter and .claude/rules globs still match a file.
     cmds:
       - repo paths check
 
   check:env:
-    desc: Verify every env.schema.yaml has the shared shape.
+    desc: Verify the env schema and the compose stacks agree.
     cmds:
       - repo env check
 

@@ -1,9 +1,12 @@
-"""`repo env render|doctor|sync|setup` -- the developer's side of the env schema.
+"""`repo env doctor|sync|setup` -- the developer's side of the env schema.
 
 These are local commands, not policy checks: they read the developer's own
 `.env`, which is gitignored and expected to differ. The blocking half of the
-contract (schema shape, `.env.example` freshness, compose parity) is the `env`
-policy, which CI and pre-commit run.
+contract is split: engineering-conventions' ENVS family owns the schema's
+shape, and the `env` policy here owns compose parity.
+
+Nothing commits a `.env` template (ENVS-26): `sync` writes `.env` from the
+schema itself, inside the container, on every post-create.
 
 The rule they share: the container always starts. A missing value stops the
 stack that needs it, never the environment you would fix it from.
@@ -12,32 +15,29 @@ stack that needs it, never the environment you would fix it from.
 from __future__ import annotations
 
 import argparse
-import difflib
+import base64
 import getpass
+import os
 import re
 import secrets
 import sys
-from pathlib import Path
 
 from governance import dotenv, repo
 
 SCHEMA = ".devcontainer/env.schema.yaml"
-EXAMPLE = ".devcontainer/.env.example"
 ENV = ".devcontainer/.env"
 STACKS = ".devcontainer/stacks"
 PROFILES_KEY = "COMPOSE_PROFILES"
 
 HEADER = """
 # ============================================================
-# Dev Container Environment — GENERATED. Do not edit.
+# Dev Container Environment — yours, and gitignored.
 # ============================================================
-# Rendered from .devcontainer/env.schema.yaml by `task env:render`.
-# `repo env check` fails when the two disagree, so edit the schema.
-#
-# On first build the host-side initializeCommand copies this file to
-# .devcontainer/.env (gitignored), which feeds both Docker Compose and the
-# container itself. `task env:setup` fills in what is missing;
-# `task env:doctor` says what that is.
+# Written from .devcontainer/env.schema.yaml by `task env:sync`, which
+# post-create runs on every container create. It only ever adds bindings the
+# schema has gained and mints local secrets; your values are never touched.
+# New terminals load this file, and Docker Compose reads it for the stacks.
+# `task env:setup` fills in what is missing; `task env:doctor` says what that is.
 #
 # Three states: `VAR=value` is a local default, `VAR=` must be filled in,
 # and `# VAR=value` is an optional override — uncomment to enable.
@@ -86,6 +86,7 @@ def enabled_profiles(values: dict[str, str | None]) -> list[str]:
 
 def invalid(binding: dict, value: str) -> str | None:
     """Why `value` does not satisfy `binding`, or None if it does."""
+    # The type and format vocabularies are engineering-conventions' (ENVS-03).
     allowed = [str(v) for v in binding.get("values") or []]
     kind = binding.get("type", "string")
     if kind == "list":
@@ -94,11 +95,13 @@ def invalid(binding: dict, value: str) -> str | None:
         return f"unknown value(s) {', '.join(bad)}" if bad else None
     if allowed and value not in allowed:
         return f"not one of {', '.join(allowed)}"
-    if kind in ("int", "port") and not value.isdigit():
+    if kind == "integer" and not re.fullmatch(r"-?\d+", value):
+        return "not an integer"
+    if kind == "number" and not re.fullmatch(r"-?\d+(\.\d+)?", value):
         return "not a number"
-    if kind == "bool" and value.lower() not in ("true", "false", "1", "0"):
+    if kind == "boolean" and value.lower() not in ("true", "false", "1", "0"):
         return "not a boolean"
-    if kind == "url" and not re.match(r"[a-z][a-z0-9+.-]*://", value):
+    if binding.get("format") == "url" and not re.match(r"[a-z][a-z0-9+.-]*://", value):
         return "not a URL"
     return None
 
@@ -141,8 +144,14 @@ def undeclared() -> list[str]:
 
 
 def _mint(kind: str) -> str:
-    size = int(kind.partition(":")[2] or 32)
-    return secrets.token_hex(size) if kind.startswith("hex") else secrets.token_urlsafe(size)
+    """Secret material for `local_generate: <encoding>:<bytes>` (ENVS-03's grammar)."""
+    encoding, _, size = kind.partition(":")
+    raw = secrets.token_bytes(int(size or 32))
+    if encoding == "hex":
+        return raw.hex()
+    if encoding == "base64url":
+        return base64.urlsafe_b64encode(raw).decode().rstrip("=")
+    return base64.b64encode(raw).decode()
 
 
 def _write(rel: str, text: str) -> None:
@@ -152,33 +161,14 @@ def _write(rel: str, text: str) -> None:
     temp.replace(path)
 
 
-def render(args: argparse.Namespace) -> int:
-    """Rewrite .env.example from the schema, or report that it has drifted."""
-    rendered = dotenv.render(schema(), HEADER)
-    current = repo.read_text(EXAMPLE) if repo.exists(EXAMPLE) else ""
-    if args.check:
-        if rendered == current:
-            print(f"{EXAMPLE} matches the schema.")
-            return 0
-        print(f"{EXAMPLE} has drifted from {SCHEMA}. Run `task env:render`.\n")
-        sys.stdout.writelines(difflib.unified_diff(
-            current.splitlines(keepends=True), rendered.splitlines(keepends=True),
-            fromfile=EXAMPLE, tofile="rendered from schema",
-        ))
-        return 1
-    _write(EXAMPLE, rendered)
-    print(f"Wrote {EXAMPLE} from {SCHEMA}.")
-    return 0
-
-
 def doctor(args: argparse.Namespace) -> int:
     """Report what the enabled stacks still need. Never touches any file."""
     problems, blocked = diagnose()
     values = dotenv.parse(_env_text())
 
     if args.compose_profiles:
-        # Printed for startup.sh, which exports it so .env wins over the stale
-        # copy `runArgs --env-file` froze into the container's environment.
+        # Printed for startup.sh, which exports it so .env wins over a
+        # COMPOSE_PROFILES an older shell exported.
         keep = [p for p in enabled_profiles(values) if p not in blocked]
         print(",".join(keep))
         return 0
@@ -214,24 +204,42 @@ def doctor(args: argparse.Namespace) -> int:
 
 
 def sync(args: argparse.Namespace) -> int:
-    """Add bindings new to the schema, and mint local secrets. Never overwrites."""
-    text = _env_text()
-    if not text and repo.exists(EXAMPLE):
-        text = repo.read_text(EXAMPLE)
+    """Write .env from the schema, or add what it has gained. Never overwrites.
+
+    A missing `.env` is written whole. An existing one only gains the bindings
+    new to the schema, a minted value for each empty `local_generate` binding,
+    and, for each empty `source: host` binding, the value of the same name in
+    this process's environment: a Codespaces secret, or a host variable passed
+    through devcontainer.json `remoteEnv` as `${localEnv:NAME}`. `--force`
+    rewrites the file from the schema, discarding every local value.
+    """
+    force = getattr(args, "force", False)
+    existing = "" if force else _env_text()
+    text = existing or dotenv.render(schema(), HEADER)
     values = dotenv.parse(text)
 
     added = [name for name in bindings() if name not in values]
     text = dotenv.append_missing(text, schema(), added)
 
-    minted = []
+    minted, from_host = [], []
     for name, binding in bindings().items():
+        if dotenv.parse(text).get(name):
+            continue
         kind = binding.get("local_generate")
-        if kind and not dotenv.parse(text).get(name):
+        if kind:
             text = dotenv.upsert(text, name, _mint(str(kind)))
             minted.append(name)
+        elif binding.get("source") == "host" and os.environ.get(name):
+            text = dotenv.upsert(text, name, os.environ[name])
+            from_host.append(name)
 
     _write(ENV, text)
-    report = [f"added {len(added)}" if added else "", f"minted {len(minted)}" if minted else ""]
+    report = [
+        "written from the schema" if not existing else "",
+        f"added {len(added)}" if added and existing else "",
+        f"minted {len(minted)}" if minted else "",
+        f"took {len(from_host)} from the environment" if from_host else "",
+    ]
     print(f"{ENV}: " + (", ".join(p for p in report if p) or "already in step with the schema") + ".")
     return 0
 
@@ -241,8 +249,6 @@ def _ask(name: str, binding: dict, current: str | None) -> str | None:
     print(f"\n{name}")
     if binding.get("description"):
         print(f"  {' '.join(str(binding['description']).split())}")
-    if binding.get("docs_url"):
-        print(f"  docs: {binding['docs_url']}")
     allowed = [str(v) for v in binding.get("values") or []]
     if allowed:
         print("  options: " + ", ".join(f"{i + 1}) {v}" for i, v in enumerate(allowed)))
@@ -320,14 +326,13 @@ def setup(args: argparse.Namespace) -> int:
 
 
 ACTIONS = {
-    "render": (render, "rewrite .devcontainer/.env.example from the schema"),
     "doctor": (doctor, "report what the enabled stacks still need"),
-    "sync": (sync, "add new bindings to .env and mint local secrets"),
+    "sync": (sync, "write .env from the schema, or add what it has gained"),
     "setup": (setup, "fill in what is missing, interactively"),
 }
 
 FLAGS = {
-    "render": [("--check", "report drift instead of writing")],
+    "sync": [("--force", "rewrite .env from the schema, discarding local values")],
     "doctor": [
         ("--quiet", "say nothing when healthy"),
         ("--motd", "one-line summary for the startup banner"),
