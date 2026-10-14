@@ -110,6 +110,13 @@ If settings aren't applying after changes, rebuild without cache:
 Named volumes may initialize with root ownership. The `ensure_writable_dir` function in `common.sh` and the
 `base_setup_config_dirs` step handle this for base volumes; they recurse only when a directory's own owner is wrong.
 
+### Running out of disk
+
+Docker-in-Docker keeps its images and build cache on a volume that survives rebuilds, so it only grows. `task
+docker:prune` removes the build cache, stopped containers and unused images, and keeps every volume (stack data
+included). Under Docker Desktop on Windows, the freed space can stay allocated in WSL's virtual disk until that
+`.vhdx` is compacted (`wsl --shutdown`, then `Optimize-VHD` or `diskpart`'s `compact vdisk`).
+
 ### Tool installation failures
 
 Base setup uses `retry` with 3 attempts and 5-second delays for network operations. If a tool consistently fails to

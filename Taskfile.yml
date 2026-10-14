@@ -72,6 +72,14 @@ tasks:
     cmds:
       - bash .devcontainer/scripts/startup.sh
 
+  docker:prune:
+    desc: Free Docker-in-Docker disk -- build cache, stopped containers, unused images. Keeps every volume.
+    cmds:
+      - docker container prune --force
+      - docker image prune --all --force
+      - docker builder prune --all --force
+      - docker system df
+
   env:setup:
     desc: Fill in the values the enabled stacks need, interactively.
     interactive: true

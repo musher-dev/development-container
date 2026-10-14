@@ -17,3 +17,8 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["governance"]
+
+# No .pytest_cache: the suite is fast enough that the cache buys nothing, and it
+# would land on the workspace bind mount. Fixtures already live in tmp_path.
+[tool.pytest.ini_options]
+addopts = "-p no:cacheprovider"
