@@ -16,3 +16,11 @@ reason = """The repository still carries its name from before the naming grammar
 musher-dev/infra-github applies the new name; the declaration follows it."""
 tracking = "https://github.com/musher-dev/development-container/issues/28"
 expires = "2027-03-31"
+
+[[waivers]]
+requirement = "DEVC-03"
+reason = """The devcontainer CLI never locks a local Feature, so ./features/mise \
+cannot appear in devcontainer-lock.json; `devcontainer build --frozen-lockfile` \
+passes without it. The rule should skip local Features."""
+tracking = "https://github.com/musher-dev/engineering-conventions/issues/106"
+expires = "2027-03-31"

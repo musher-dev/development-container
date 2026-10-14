@@ -11,7 +11,7 @@ from governance.reporting import Report
 RANGE_LOW, RANGE_HIGH = 15432, 15460
 
 DEVCONTAINER = ".devcontainer/devcontainer.json"
-DOC = "CONFIGURATION.md"
+DOC = "docs/configuration.md"
 
 #: `| 15432 | PostgreSQL | TCP |` in the Port Allocation table.
 _TABLE_ROW = re.compile(r"^\|\s*(\d{4,5})\s*\|")
@@ -20,7 +20,7 @@ _PUBLISHED = re.compile(r"^\s*-\s*[\"']?(?:[\d.]+:)?(\d{4,5}):\d+")
 
 
 def _documented_ports() -> set[int]:
-    """Ports listed in the CONFIGURATION.md Port Allocation table."""
+    """Ports listed in the docs/configuration.md Port Allocation table."""
     ports: set[int] = set()
     in_section = False
     for line in repo.read_text(DOC).splitlines():

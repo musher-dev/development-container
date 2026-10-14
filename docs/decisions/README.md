@@ -10,8 +10,9 @@ the repository that copies it.
 
 | ID | Decision | Status |
 | --- | --- | --- |
-| [0001](0001-the-scaffold-is-published-as-a-pinned-image.md) | The scaffold is published as a pinned image, and the general rules live in engineering-conventions | accepted |
+| [0001](0001-the-scaffold-is-published-as-a-pinned-image.md) | The scaffold is published as a pinned image, and the general rules live in engineering-conventions | superseded by 0004 |
 | [0002](0002-the-dev-env-file-is-generated-in-the-container.md) | The dev environment's .env is generated inside the container, and nothing runs on the host | accepted |
-| [0003](0003-the-image-bakes-only-mise.md) | The image bakes only mise; every other CLI is a locked mise pin | accepted |
+| [0003](0003-the-image-bakes-only-mise.md) | The image bakes only mise; every other CLI is a locked mise pin | superseded by 0004 |
+| [0004](0004-the-container-starts-from-the-base-image.md) | The container starts from the Microsoft base image, and mise comes from a local Feature | accepted |
 
 [ec-decision]: https://github.com/musher-dev/engineering-conventions/blob/v0.8.0/engineering-conventions/definitions/conventions/decisions/decision-records.md

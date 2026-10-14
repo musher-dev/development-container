@@ -12,7 +12,7 @@ audience = "public"
 visibility = "public"
 tier = 2
 
-# The product level of this repo -- see LAYOUT.md "Declaring the Product".
+# The product level of this repo -- see docs/layout.md "Declaring the Product".
 # Empty is the template's state: no product. Product-dependent rules skip; the
 # rule that the root holds no product content still applies (REPO-14..21).
 [layout]

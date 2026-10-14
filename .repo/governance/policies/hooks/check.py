@@ -20,7 +20,6 @@ HOOK_TO_CI = {
     "yaml": "lint",
     "actions": "lint",
     "spelling": "lint",
-    "dockerfile": "conventions",
     "governance": "governance",
 }
 
@@ -40,7 +39,7 @@ LOCAL_ONLY = {
 CI_ONLY = {
     "shellcheck": (
         "Runs against the whole scripts tree via a pinned action; the "
-        "equivalent local run is `shellcheck` itself, which the image carries."
+        "equivalent local run is `shellcheck` itself, which the container carries."
     ),
     "compose": (
         "Requires a Docker daemon to resolve `docker compose config`, which "
@@ -48,15 +47,14 @@ CI_ONLY = {
     ),
     "conventions": (
         "`conventions check` reads the whole repository and its git history; "
-        "`task check` runs it locally, and the pre-commit `dockerfile` job "
-        "covers its hadolint half."
+        "`task check` runs it locally."
     ),
     "dev_container": (
         "Resolves every Feature digest over the network; too slow and too "
         "network-dependent for a pre-commit hook."
     ),
     "build": (
-        "Builds the whole dev container image. Minutes, not seconds -- a "
+        "Builds the whole dev container. Minutes, not seconds -- a "
         "pre-commit hook cannot absorb that."
     ),
     "required": "The aggregate of every other job (GHA-14); it checks nothing itself.",

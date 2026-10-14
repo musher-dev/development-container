@@ -1,9 +1,10 @@
 ---
 title: The scaffold is published as a pinned image, and the general rules live in engineering-conventions
-date: 2026-10-03
-status: accepted
+date: 2026-10-14
+status: superseded
 deciders: ["@justinmerrell"]
 supersedes: []
+superseded_by: ["0004"]
 ---
 
 # 0001 — The scaffold is published as a pinned image, and the general rules live in engineering-conventions

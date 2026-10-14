@@ -4,7 +4,7 @@
 governance, and the documents people open first. One directory, named after the repository, holds what the product
 *is built from*.
 
-This file decides **which level** a file belongs to. [CONFIGURATION.md](CONFIGURATION.md) decides where it goes
+This file decides **which level** a file belongs to. [configuration.md](configuration.md) decides where it goes
 *within* the repository level. What is mechanically enforced is listed under [Invariants](#invariants): most of it by
 [engineering-conventions][ec-layout] (`conventions check`, the REPO and ENVS families), the rest by this scaffold's
 own `repo check`.
@@ -16,7 +16,7 @@ own `repo check`.
 ├── .devcontainer/ .github/     integration homes whose location the tool mandates
 ├── .config/  .repo/            repo tool config; declarations (repository.toml)
 ├── Taskfile.yml  taskfiles/    orchestration entry points
-├── README.md  LAYOUT.md …      human entry points (AGENTS.md, docs/, SECURITY.md …)
+├── README.md  docs/ …          human entry points (AGENTS.md, SECURITY.md …)
 └── <repo>/                     product level: what the product is built from
     ├── Cargo.toml | package.json | pyproject.toml | go.mod …
     ├── native tool configs     rust-toolchain.toml, .cargo/, rustfmt.toml, ruff.toml …
@@ -64,7 +64,7 @@ level and points down: repository machinery may name product paths, but the prod
 ## Declaring the Product
 
 The product directory is declared once, in the `[layout]` table of
-[`.repo/repository.toml`](.repo/repository.toml), the repository's identity declaration:
+[`.repo/repository.toml`](../.repo/repository.toml), the repository's identity declaration:
 
 ```toml
 [layout]
@@ -105,7 +105,7 @@ An exception without a reason, or one whose file is gone, fails `REPO-19`: the l
 | 7 | The product is self-contained: nothing in it references a path above it | Not yet enforced |
 | 8 | Build output lives under the product, on a volume where the dev container provides one | Placement only (`LAYOUT-07`) |
 
-`LAYOUT-07` and `PATH-01`/`PATH-04` are this scaffold's own (`repo check`, [`.repo/`](.repo/README.md)); every other
+`LAYOUT-07` and `PATH-01`/`PATH-04` are this scaffold's own (`repo check`, [`.repo/`](../.repo/README.md)); every other
 ID is an [engineering-conventions][ec-layout] requirement, run by `conventions check`.
 
 Invariant 7 is documented rather than checked. A cheap detector scanning manifests for `../` would flag legitimate
@@ -123,7 +123,7 @@ It is the canonical example of the placement test, because there are two env fil
 | File | Level | Read by |
 | --- | --- | --- |
 | `<product>/env.schema.yaml` | Product | The shipped product, at runtime |
-| `.devcontainer/env.schema.yaml` | Repository | The dev environment, see CONFIGURATION.md |
+| `.devcontainer/env.schema.yaml` | Repository | The dev environment, see configuration.md |
 
 Both share one shape, engineering-conventions' env schema (`ENVS-03`):
 

@@ -4,10 +4,10 @@
 # Location: this file lives in .config/, not the repo root. Lefthook
 # discovers it natively — `MainConfigNames` in internal/config/loader.go is
 # ["lefthook", ".lefthook", ".config/lefthook"] — so no flag, env var or
-# wrapper is involved. See CONFIGURATION.md → "Where configuration lives".
+# wrapper is involved. See docs/configuration.md → "Where Configuration Lives".
 #
 # Search order is first-match-wins: a stray root lefthook.yml would silently
-# shadow this file. `repo config check` fails the build if one appears.
+# shadow this file. `conventions check` (CONF-06) fails if one appears.
 #
 # Local overrides: .config/lefthook-local.yml (gitignored) is auto-merged.
 # Debug: lefthook run pre-commit | lefthook dump | lefthook validate
@@ -73,11 +73,6 @@ pre-commit:
       glob: ".github/workflows/*.{yml,yaml}"
       run: actionlint -config-file .config/actions/actionlint.yaml {staged_files}
       fail_text: "Workflow lint failed. Run 'task lint:actions' for the full output."
-
-    - name: dockerfile
-      glob: "**/{Dockerfile,*.Dockerfile}"
-      run: hadolint --config .config/docker/hadolint.yaml {staged_files}
-      fail_text: "hadolint found a problem in a staged Dockerfile. Run 'task lint:docker'."
 
     - name: governance
       # Structural policy (`repo check`). No glob: the layout policy reads

@@ -1,53 +1,36 @@
 # Musher Dev Container Template
 
-Canonical dev container for the musher-dev organization: a published image every repository pins, and the template a
-new repository starts from. Batteries-included: AI CLIs, multiple language runtimes, Docker-in-Docker, Task, and
-consistent VS Code settings. Comment out what you don't need.
+Canonical dev container for the musher-dev organization: the template a new repository starts from. It builds on the
+Microsoft base image (`mcr.microsoft.com/devcontainers/base:ubuntu-24.04`) with pinned Features and lifecycle scripts
+of its own; there is no image to publish or pin. Batteries-included: AI CLIs, multiple language runtimes,
+Docker-in-Docker, Task, and consistent VS Code settings. Comment out what you don't need.
 
 ## What You Get
 
 - Ubuntu 24.04 LTS base with zsh/oh-my-zsh
-- Node, Python, Go, Java, Deno — pinned Features
-- mise, baked into the image; every other CLI (bun, uv, Task, Codex, Lefthook, the linters, engineering-conventions)
-  a locked pin in [`.config/mise/config.toml`](.config/mise/config.toml)
+- Node, Python, Go, Java, Deno — pinned Features; pnpm and yarn through corepack, from `package.json`'s
+  `packageManager`
+- mise, from a local Feature ([`.devcontainer/features/mise/`](.devcontainer/features/mise/)); every other CLI (bun,
+  uv, Task, Codex, Lefthook, the linters, engineering-conventions) a locked pin in
+  [`.config/mise/config.toml`](.config/mise/config.toml)
+- Opt-in, commented out until you need them: Rust (a Feature), OpenTofu, tflint, terraform-docs, doctl, cloudflared
+  and buf (mise pins)
 - Docker-in-Docker, Git + GitHub CLI, Claude Code
 - GitLens, YAML, TOML, Copilot, Go, Python, Ruff, ESLint, Docker extensions
 - Format on save, rulers, trailing whitespace trimming
 
-## Use the Image
-
-Each release publishes `ghcr.io/musher-dev/development-container:<version>` (amd64 and arm64, with build
-provenance) from [`.devcontainer/image/`](.devcontainer/image/devcontainer.json). Its `devcontainer.metadata` label
-carries the platform Features, the `vscode` user, the gh/Claude/Codex config volumes, the cache environment and the
-lifecycle scripts, so a repository's `devcontainer.json` names the image and adds only what is its own:
-
-```jsonc
-{
-  "image": "ghcr.io/musher-dev/development-container:0.0.0", // x-release-please-version
-  "features": { "ghcr.io/devcontainers/features/node:2": { "version": "24.18.0" } },
-  "forwardPorts": [15432]
-}
-```
-
-Pin an exact version, never `latest`: a released tag is never rewritten, and Dependabot or Renovate raises the pin.
-Verify an image with `gh attestation verify oci://ghcr.io/musher-dev/development-container:<version> --owner
-musher-dev`. The changes in each version are in [CHANGELOG.md](CHANGELOG.md); why the scaffold is published this way
-is [decision 0001](docs/decisions/0001-the-scaffold-is-published-as-a-pinned-image.md).
-
 ## Start a New Repository
 
 1. Click **Use this template** → **Create a new repository** on GitHub.
-2. Delete `.devcontainer/image/`, `docs/decisions/`, `.github/release-please/`, `.github/workflows/release.yaml`,
-   `.repo/outputs.toml`, `version.txt` and `CHANGELOG.md` — they publish this scaffold, not your repository. Point
-   `.devcontainer/devcontainer.json` at the released image as above.
+2. Delete `docs/decisions/` — those records are about this scaffold, not your repository.
 3. Set your identity in `.repo/repository.toml` (`name`, `system`, `component`, `kind`, `owner`).
 4. Clone it, open it in VS Code, and run **Dev Containers: Reopen in Container**.
 5. *(Optional)* Run `task env:setup` to choose which stacks start and fill in any values they need.
 
 The general rules — layout, configuration, workflows, toolchain — are
-[engineering-conventions](https://github.com/musher-dev/engineering-conventions)', pinned in
-`.config/mise/config.toml` and run by `task conventions`. A new repository pins that release; it does not copy
-`.repo/`, which holds only this scaffold's own checks and env tools, and which the image installs for you.
+[engineering-conventions](https://github.com/musher-dev/engineering-conventions), pinned in
+`.config/mise/config.toml` and run by `task conventions`. `.repo/` holds only the scaffold's own checks and the env
+tools post-create uses (`repo env sync`); keep it, since post-create installs the `repo` CLI from it.
 
 ## Local Environment
 
@@ -73,7 +56,7 @@ the stack that needs it, and only while that stack's profile is enabled. Useful 
 | `task env:sync` | Write `.env`, or add bindings the schema has gained; never overwrites a value you set. |
 | `task env:reset` | Rewrite `.env` from the schema (prompts before overwriting). |
 | `task stacks:restart` | Bring the stacks up to match the current `.env`. |
-| `task lint` | Run every lint gate (Markdown, YAML, workflows, spelling, Dockerfiles). |
+| `task lint` | Run every lint gate (Markdown, YAML, workflows, spelling). |
 | `task check` | Run every gate CI runs that can run locally, engineering-conventions included. |
 | `task tools:install` | Install every pinned CLI from `.config/mise/config.toml`. |
 
@@ -82,29 +65,32 @@ The startup MOTD repeats anything still outstanding.
 ## Customize
 
 - Add your product → a directory named after the repo, declared in `.repo/repository.toml` under `[layout]`. The
-  repository root stays the machinery that acts on it; [LAYOUT.md](LAYOUT.md) is the rule.
+  repository root stays the machinery that acts on it; [docs/layout.md](docs/layout.md) is the rule.
 - Comment out unneeded features/extensions in `devcontainer.json`.
 - Change a tool version → `devcontainer.json` (Features) or `.config/mise/config.toml` (everything else; run
-  `mise lock` after). The tier rule is in [CONFIGURATION.md](CONFIGURATION.md#runtimes--tools).
+  `mise lock` after). The tier rule is in [docs/configuration.md](docs/configuration.md#runtimes--tools).
 - Change a lint rule → the matching file in `.config/` (see [`.config/README.md`](.config/README.md)).
-- Add project setup to a `postCreateCommand` of your own; the image's runs first.
+- Add project setup → `main` in [`.devcontainer/scripts/post-create.sh`](.devcontainer/scripts/post-create.sh), below
+  the marked line.
+- Add a runtime → uncomment Rust in `devcontainer.json`, or an optional pin in `.config/mise/config.toml` (then
+  `mise lock`).
 - Add or enable a service → `.devcontainer/stacks/` (one folder per stack, registered in `stacks/compose.yaml`);
   toggle with `COMPOSE_PROFILES` in `.devcontainer/.env` (redis, minio, registry, azimutt, observability).
-- Full reference → [CONFIGURATION.md](CONFIGURATION.md).
+- Full reference → [docs/configuration.md](docs/configuration.md).
 
 ## Included CI
 
 `.github/workflows/validate.yaml` runs ShellCheck, Compose config validation, the lint gates,
-engineering-conventions (with hadolint), the scaffold's own policies and their tests, both dev container
-configurations against their lockfiles, and a full container build that asserts every pinned tool installed. Its
+engineering-conventions, the scaffold's own policies and their tests, the dev container configuration against its
+lockfile, and a full container build that asserts every pinned tool installed. Its
 `Validate / Required` job is the one context the branch ruleset requires; `validate-pull-request.yaml` adds the
 pull request title check. Tool versions resolve from `.config/mise/config.toml` — the same file the container uses.
 
 The same lint and structure checks run pre-commit via [`.config/lefthook.yml`](.config/lefthook.yml), and
 `repo hooks check` fails the build if the two ever disagree.
 
-`.github/workflows/release.yaml` runs release-please and, on each release, publishes the image. Branch and tag
-protection is committed under [`.github/rulesets/`](.github/rulesets/); musher-dev/infra-github applies it.
+Branch protection is committed under [`.github/rulesets/`](.github/rulesets/); musher-dev/infra-github applies it.
+Nothing is released: a repository takes the template once and owns its copy from then on.
 
 ## Troubleshooting
 

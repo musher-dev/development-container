@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from governance.reporting import Violation
 
-DOCS = "CONFIGURATION.md#where-configuration-lives"
+DOCS = "docs/configuration.md#where-configuration-lives"
 
 _WHY = (
     "A check that runs locally but not in CI is unenforced -- anyone can "

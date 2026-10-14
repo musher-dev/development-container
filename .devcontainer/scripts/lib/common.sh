@@ -4,7 +4,7 @@
 # This is a library file meant to be sourced, not executed directly.
 # Usage: source "path/to/common.sh"
 #
-# Provides logging, command helpers, directory setup, NVM/NPM utilities,
+# Provides logging, command helpers, directory setup, NVM permissions,
 # and tool verification functions used by all setup scripts.
 set -euo pipefail
 
@@ -22,11 +22,8 @@ log() {
 
 # Prints the workspace (repo) root these scripts act on.
 #
-# The scripts run from two places: the workspace's own .devcontainer/image/
-# while the template develops them, and /usr/local/share/musher-devcontainer/
-# inside the published image, where nothing sits beside them. So the root is
-# never derived from the script's own path: lifecycle commands run in the
-# workspace folder, which is what this resolves.
+# Lifecycle commands run in the workspace folder, so git's top level is the
+# root; MUSHER_WORKSPACE overrides it for a script run from elsewhere.
 #
 # Globals:
 #   MUSHER_WORKSPACE — read, explicit override
@@ -38,6 +35,27 @@ workspace_root() {
   else
     git rev-parse --show-toplevel 2>/dev/null || pwd
   fi
+}
+
+# Prints the mise version the workspace's mise configuration requires.
+#
+# min_version in .config/mise/config.toml is the one mise pin (TOOL-04): the
+# mise Feature's `version` option, jdx/mise-action and the fallback installer
+# all match it.
+#
+# Arguments:
+#   $1 — repo root
+# Outputs:
+#   The version, without a leading 'v', on stdout
+# Returns:
+#   0 on success, 1 if the config or its min_version is absent
+mise_min_version() {
+  local root="${1:?usage: mise_min_version <repo-root>}"
+  local value
+  value="$(sed -n 's/^min_version *= *"v\{0,1\}\([^"]*\)".*/\1/p' \
+    "${root}/.config/mise/config.toml" 2>/dev/null | head -1)"
+  [[ -n "${value}" ]] || return 1
+  printf '%s\n' "${value}"
 }
 
 # --- Command helpers ---
@@ -166,20 +184,6 @@ fix_nvm_permissions() {
     log "Fixing NVM permissions in ${nvm_dir}..."
     maybe_sudo chown -R "$(id -un):$(id -gn)" "$nvm_dir"
   fi
-}
-
-# Installs an npm package globally with retry logic.
-#
-# Arguments:
-#   $1 — package name
-#   $2 — max attempts (default: 3)
-# Outputs:
-#   Writes progress to stderr via log()
-install_npm_cli() {
-  local package="${1:?usage: install_npm_cli <package> [attempts]}"
-  local attempts="${2:-3}"
-  log "Installing npm CLI: ${package}..."
-  retry "$attempts" 5 npm install -g "$package"
 }
 
 # --- Verification ---

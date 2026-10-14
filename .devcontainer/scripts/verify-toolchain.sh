@@ -1,40 +1,21 @@
 #!/usr/bin/env bash
 # verify-toolchain.sh — Asserts the built container carries the pinned toolchain.
 #
-# Two halves. The image bakes only mise, and the Dockerfile's assertion is
-# presence-only (`test -x`): executing a binary in the layer that installed it
-# is a known BuildKit hazard. So this checks mise reports the ARG MISE_VERSION
-# pin, read back out of the Dockerfile so the ARG stays the single source.
-# Everything else is a mise pin that post-create installed; `mise ls --missing`
-# proves every one of them is there.
+# Two halves. The mise Feature installs mise at build time; this checks it
+# reports the configuration's min_version, the one mise pin (TOOL-04), so a
+# Feature option that drifts from it fails here. Everything else is a mise pin
+# that post-create installed; `mise ls --missing` proves every one of them is
+# there.
 #
-# Usage: bash .devcontainer/image/scripts/verify-toolchain.sh
+# Usage: bash .devcontainer/scripts/verify-toolchain.sh
 #        (CI runs it as the devcontainers/ci `runCmd`, from the workspace.)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
-DOCKERFILE="${SCRIPT_DIR}/../Dockerfile"
-readonly DOCKERFILE
 
-# Reads a pinned ARG default out of the Dockerfile.
-#
-# Arguments:
-#   $1 — the ARG name, e.g. BUN_VERSION
-# Outputs:
-#   The pinned value on stdout
-# Returns:
-#   0 on success, 1 if the ARG is absent or has no default
-arg_pin() {
-  local name="${1}"
-  local value
-  value="$(sed -n "s/^ARG ${name}=\\(.*\\)$/\\1/p" "${DOCKERFILE}" | head -1)"
-  if [[ -z "${value}" ]]; then
-    echo "ERROR: no 'ARG ${name}=<pin>' in ${DOCKERFILE}" >&2
-    return 1
-  fi
-  printf '%s\n' "${value}"
-}
+# shellcheck source=lib/common.sh
+source "${SCRIPT_DIR}/lib/common.sh"
 
 # Asserts `<tool> --version` reports the expected version.
 #
@@ -63,19 +44,23 @@ assert_version() {
   echo "  ok   ${tool} ${expected}"
 }
 
-# Entry point: checks mise against its Dockerfile pin, then the mise pins.
+# Entry point: checks mise against min_version, then the mise pins.
 #
 # Outputs:
 #   Writes per-tool results to stdout
 # Returns:
 #   0 if everything matches, 1 otherwise
 main() {
-  echo "Verifying the toolchain against ${DOCKERFILE} and the mise config..."
+  local root mise_v failed=0
+  root="$(workspace_root)"
+  echo "Verifying the toolchain against ${root}/.config/mise/config.toml..."
 
-  # MISE_VERSION is pinned with a leading 'v'; `mise --version` prints without.
-  local mise_v failed=0
-  mise_v="$(arg_pin MISE_VERSION)"
-  assert_version mise "${mise_v#v}" || failed=1
+  if mise_v="$(mise_min_version "${root}")"; then
+    assert_version mise "${mise_v}" || failed=1
+  else
+    echo "  FAIL mise: no min_version in .config/mise/config.toml"
+    failed=1
+  fi
 
   local missing
   missing="$(mise ls --missing --no-header 2>&1)" || failed=1
