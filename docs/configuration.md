@@ -4,7 +4,7 @@
 unsure where something goes, use the decision tree below.
 
 This guide covers the **repository level**. Whether a file belongs to the repository or to the product directory is
-decided first, by [LAYOUT.md](LAYOUT.md#the-placement-test).
+decided first, by [layout.md](layout.md#the-placement-test).
 
 ## Decision Tree
 
@@ -13,7 +13,7 @@ Where does my configuration go?
 
 Is it read by the product's native toolchain, or found by walking up from
 the product (Cargo.toml, rustfmt.toml, tsconfig.json, ruff.toml)?
-  → <product>/ — see LAYOUT.md. Everything below is the repository level.
+  → <product>/ — see layout.md. Everything below is the repository level.
 
 Is the tool's config auto-loaded only from the repo root, with no way to
 point at another path (Task)?
@@ -29,7 +29,7 @@ Runtime, or a tool with a Feature whose installer avoids api.github.com?
   → devcontainer.json → features block (pin the version)
 
 Self-updating CLI (e.g. Claude Code)?
-  → image/scripts/lib/base-setup.sh (native installer)
+  → .devcontainer/scripts/lib/base-setup.sh (native installer)
 
 Any other CLI (bun, uv, task, codex, lefthook, linters)?
   → .config/mise/config.toml, then `mise lock`
@@ -47,10 +47,10 @@ Service-internal configuration (tuning, pipelines)?
   → stacks/<name>/ (colocated with that stack's compose.yaml)
 
 One-time setup step?
-  → image/scripts/post-create.sh, or a repository's own postCreateCommand
+  → .devcontainer/scripts/post-create.sh → main
 
 Runs on every container start?
-  → image/scripts/startup.sh
+  → .devcontainer/scripts/startup.sh
 ```
 
 ## Where Configuration Lives
@@ -62,14 +62,14 @@ the first "yes".
 | --- | --- | --- | --- |
 | 1 | Can the tool *only* load from the repo root, with no flag to point elsewhere? | Repo root | `Taskfile.yml`, `.gitattributes`, `.gitignore` |
 | 2 | Does it configure a tool: a linter, formatter, the git hooks, mise? | `.config/<concern>/` | `markdown/markdownlint.jsonc`, `mise/config.toml` (`lefthook.yml` top-level) |
-| 3 | Does it provision the container or its services? | `.devcontainer/` | `image/Dockerfile`, `devcontainer.json`, `env.schema.yaml`, `stacks/` |
+| 3 | Does it provision the container or its services? | `.devcontainer/` | `devcontainer.json`, `features/mise/`, `env.schema.yaml`, `stacks/` |
 | 4 | Does it declare the repository, or enforce the scaffold's own structure? | `.repo/` | `repository.toml`, the `repo` CLI and its policies |
 
 Why `.config/` is dotted: it is repo infrastructure, and it sits alongside the
 other infrastructure directories this repo already has — `.devcontainer/`,
 `.github/`, `.repo/`. Undotted at the root are the product directory and the
 entry points people open first; dotted is the machinery that operates on the
-repository (see [LAYOUT.md](LAYOUT.md#the-rule)).
+repository (see [layout.md](layout.md#the-rule)).
 
 Three rules make the `.config/` home hold:
 
@@ -85,24 +85,23 @@ Three rules make the `.config/` home hold:
 - **Every config must have a caller.** A file nothing reads is dead weight.
   `conventions check` fails on orphans (`CONF-04`).
 
-See [`.config/README.md`](.config/README.md) for the per-file index. The `CONF` family of
+See [`.config/README.md`](../.config/README.md) for the per-file index. The `CONF` family of
 [engineering-conventions](https://github.com/musher-dev/engineering-conventions) enforces these rules; see
-[`.repo/README.md`](.repo/README.md) for what this scaffold checks on its own.
+[`.repo/README.md`](../.repo/README.md) for what this scaffold checks on its own.
 
 ## Quick Reference
 
 | Category | Need | Canonical Location |
 | --- | --- | --- |
 | **Runtimes & Tools** | Anything with a usable Feature (Node, Python, Go, Java, Deno, gh, ShellCheck, psql) | `devcontainer.json` → `features` (pinned) |
-| | mise itself | `.devcontainer/image/Dockerfile` → `ARG MISE_VERSION` (= `min_version`) |
+| | mise itself | `devcontainer.json` → `./features/mise` → `version` (= `min_version`) |
 | | Every other CLI (bun, uv, Task, Codex, Lefthook, linters) | `.config/mise/config.toml` + `mise.lock` |
-| | Self-updating CLIs (Claude Code) | `image/scripts/lib/base-setup.sh` |
+| | Self-updating CLIs (Claude Code) | `.devcontainer/scripts/lib/base-setup.sh` |
 | **Tooling** | Git hooks | `.config/lefthook.yml` |
 | | Markdown lint rules | `.config/markdown/markdownlint.jsonc` |
 | | YAML lint rules | `.config/yaml/yamllint.yaml` |
 | | GitHub Actions lint rules | `.config/actions/actionlint.yaml` |
 | | Spelling dictionary / ignores | `.config/spelling/codespell.cfg` |
-| | Dockerfile lint rules | `.config/docker/hadolint.yaml` |
 | | Commit types and scopes | `.config/commits/committed.toml` |
 | | Task automation for the template | `Taskfile.yml` + `taskfiles/<name>.Taskfile.yml` |
 | | General repository rules | engineering-conventions, pinned in `.config/mise/config.toml` |
@@ -113,7 +112,7 @@ See [`.config/README.md`](.config/README.md) for the per-file index. The `CONF` 
 | **Shell & User** | Default shell, prompt, oh-my-zsh config | `devcontainer.json` → `common-utils` feature |
 | | Git config | Host `.gitconfig` (auto-forwarded by devcontainers) |
 | **Environment** | Runtime behavior vars (`PYTHONUNBUFFERED`, etc.) | `devcontainer.json` → `containerEnv` |
-| | PATH extensions | `devcontainer.json` → `remoteEnv` |
+| | PATH extensions | `devcontainer.json` → `remoteEnv` (mise shims: the mise Feature's `containerEnv`) |
 | | Service credentials (dev-only) | `.devcontainer/env.schema.yaml` → written to `.env` by `repo env sync` |
 | | Service profiles/toggles | `COMPOSE_PROFILES` (set it with `task env:setup`) |
 | | Secrets (API keys, tokens) | `source: host` bindings: Codespaces secrets, or `${localEnv:...}` in `remoteEnv` |
@@ -131,14 +130,13 @@ See [`.config/README.md`](.config/README.md) for the per-file index. The `CONF` 
 | | DB schema init (project) | `.devcontainer/stacks/postgres/init/01-project.sql` |
 | | DB migrations | Project tooling (Atlas, Flyway — not in template) |
 | | Data persistence | Compose files → named volumes |
-| **Lifecycle** | One-time container setup | `image/scripts/post-create.sh` → `lib/base-setup.sh` |
-| | Every-start tasks | `image/scripts/startup.sh` |
+| **Lifecycle** | One-time container setup | `.devcontainer/scripts/post-create.sh` → `lib/base-setup.sh` |
+| | Every-start tasks | `.devcontainer/scripts/startup.sh` |
 | | Task automation (consuming project) | `Taskfile.yml` in the consuming repo |
 | **AI Tools** | Claude Code (native installer) | `lib/base-setup.sh` |
 | | Codex CLI (pinned) | `.config/mise/config.toml` |
-| | AI CLI config persistence | `image/devcontainer.json` → `mounts` (named volumes), `CLAUDE_CONFIG_DIR` |
+| | AI CLI config persistence | `devcontainer.json` → `mounts` (named volumes), `CLAUDE_CONFIG_DIR` |
 | **Security** | Container capabilities | `devcontainer.json` → `capAdd` / `securityOpt` |
-| | Docker build context | `.devcontainer/image/` (holds no `.env`) |
 | | Network binding | Compose files → all ports bound to `127.0.0.1` |
 
 ---
@@ -150,31 +148,28 @@ Tools land in one of three places. Ask these in order and stop at the first "yes
 | # | Question | Home |
 | --- | --- | --- |
 | 1 | Is there a Feature, **and** does its installer avoid `api.github.com`? | `devcontainer.json` → `features` |
-| 2 | Does the tool update itself? | `scripts/lib/base-setup.sh` |
+| 2 | Does the tool update itself? | `.devcontainer/scripts/lib/base-setup.sh` |
 | 3 | Anything else (bun, uv, Task, Codex, Lefthook, the linters, engineering-conventions) | `.config/mise/config.toml`, locked |
 
-The image itself bakes exactly one tool: **mise**, at `ARG MISE_VERSION` in
-[`.devcontainer/image/Dockerfile`](.devcontainer/image/Dockerfile), which equals the configuration's `min_version`
-(`TOOL-04`). Why only mise: [decision 0003](docs/decisions/0003-the-image-bakes-only-mise.md).
+mise itself is the one exception: a local Feature installs it (see [The mise Feature](#the-mise-feature)).
 
 ### 1. Tools with a Feature → `devcontainer.json`
 
-Runtimes and any CLI that ships a devcontainer Feature are pinned in the `features` block, so they're baked into the
-image:
+Runtimes and any CLI that ships a devcontainer Feature are pinned in the `features` block, so they install at build
+time:
 
 ```jsonc
 "features": {
-  "ghcr.io/devcontainers/features/node:1": { "version": "24.18.0" },
+  "ghcr.io/devcontainers/features/node:2": { "version": "24.18.0" },
   "ghcr.io/devcontainers/features/python:1": { "version": "3.13.14" },
   "ghcr.io/devcontainers-extra/features/deno:1": { "version": "2.9.2" }
 }
 ```
 
-The platform Features (common-utils, git, github-cli, docker-in-docker, shellcheck, postgresql-client) belong to the
-published image, in [`.devcontainer/image/devcontainer.json`](.devcontainer/image/devcontainer.json). The runtimes
-are a repository's own, in `.devcontainer/devcontainer.json`. Comment out any you don't need (and its matching VS Code
-extension). Pin an exact version where the Feature supports it; a couple track a major line instead (`java: 17`,
-`postgresql-client: 16`).
+Comment out any you don't need (and its matching VS Code extension). Rust is there commented out: uncomment it for a
+Cargo product. Pin an exact version where the Feature supports it; a couple track a major line instead (`java: 17`,
+`postgresql-client: 16`). Node's corepack is enabled at post-create, so pnpm and yarn come from `package.json`'s
+`packageManager` field rather than a pin here.
 
 Before adding a third-party Feature, read its `install.sh`. If it delegates to
 `ghcr.io/devcontainers-extra/features/gh-release` (directly or via nanolayer), it belongs in mise instead. Those
@@ -188,7 +183,7 @@ response = urllib.request.urlopen(
 ```
 
 Codespaces build hosts and GitHub-hosted Actions runners share egress IP pools, so the 60 req/hr anonymous limit is
-routinely exhausted and the call 403s. One failed Feature fails the entire image build, and pinning the version does
+routinely exhausted and the call 403s. One failed Feature fails the entire container build, and pinning the version does
 not help: the pin only supplies the tag, and the asset listing still calls the API. That is why bun, uv and Task are
 not Features.
 
@@ -196,7 +191,7 @@ not Features.
 build a `releases/download/...` URL directly; `robbert229/postgresql-client` is apt. The rule is about the
 installer's behaviour, not the publisher.
 
-### 2. Self-updating CLIs → `scripts/lib/base-setup.sh`
+### 2. Self-updating CLIs → `.devcontainer/scripts/lib/base-setup.sh`
 
 CLIs that manage their own updates (Claude Code) install via their native installer. Add a function and call it from
 `base_setup()`:
@@ -229,20 +224,27 @@ task tools:install                                       # mise install --locked
 rate-limit the Features above. post-create runs it against the workspace, and CI resolves the same pins through
 `jdx/mise-action`.
 
-Constraints on the Dockerfile:
+Optional pins are commented out at the bottom of the file: OpenTofu, tflint, terraform-docs, doctl, cloudflared
+and buf. Uncomment the ones the product needs, then `mise lock`.
 
-- **Features layer *after* the Dockerfile**, so it cannot use anything a Feature provides, and mise pins arrive only
-  at post-create. Nothing that runs before post-create may need bun, uv or Task.
-- **Runtime identity is not the Dockerfile's job.** There is no `USER` instruction; `updateRemoteUserUID` expects
-  root at build time and `remoteUser` owns identity afterwards. Anything touching the named-volume mount points
-  (`~/.claude`, `~/.config/gh`, `~/.codex`) belongs in post-create.
+### The mise Feature
+
+[`.devcontainer/features/mise/`](../.devcontainer/features/mise/) is a local Feature: `install.sh` runs the
+`mise.run` installer with `MISE_VERSION` set, which downloads the release asset from
+`github.com/jdx/mise/releases/download/` and never calls `api.github.com`. The published
+`devcontainers-extra/features/mise` fails rule 1 above, so it is not used. Why a local Feature rather than an image
+of our own or a post-create install: [decision 0004](decisions/0004-the-container-starts-from-the-base-image.md).
+
+- **One pin.** The Feature's `version` in `devcontainer.json` equals `min_version` in `.config/mise/config.toml`
+  (`TOOL-04`), as does every `jdx/mise-action` `version:`. Dependabot raises neither: bump all three together.
 - **Version assertions are presence-only** (`test -x`): executing a binary in the layer that installed it is a known
-  BuildKit hazard. `scripts/verify-toolchain.sh`, run by CI against the built container, asserts mise reports its
-  pin and `mise ls --missing` is empty.
-
-The build context is `.devcontainer/image/`, which holds only the Dockerfile, its `devcontainer.json` and the
-`scripts/` the Dockerfile copies to `/usr/local/share/musher-devcontainer/`. `.devcontainer/.env` is outside it, so it
-never reaches the Docker daemon.
+  BuildKit hazard. `.devcontainer/scripts/verify-toolchain.sh`, run by CI against the built container, asserts
+  `mise --version` matches `min_version` and that `mise ls --missing` is empty.
+- **The Feature owns mise's PATH.** Its `containerEnv` puts `~/.local/share/mise/shims` on PATH for every process,
+  lifecycle hooks included, so `remoteEnv` adds only `~/.local/bin`.
+- **mise pins arrive only at post-create.** Nothing that runs at build time may need bun, uv or Task.
+- **Anything touching a named-volume mount point** (`~/.claude`, `~/.config/gh`, `~/.codex`) belongs in post-create:
+  the volumes are not mounted while Features install.
 
 ---
 
@@ -255,14 +257,14 @@ enforced by `repo comments check`.
 someone who has never seen this code write the comment just by reading the line below it? If so, delete it.
 
 **Write each rationale once, then reference it.** A decision explained at every call site is a decision that will
-disagree with itself within a release. The full account lives here in `CONFIGURATION.md`; code carries a one-line
-summary and a pointer. `repo comments check` (`CMT-03`) fails the build if a pointer stops resolving, so
-references are safe to rely on.
+disagree with itself within a release. The full account lives here in `configuration.md`; code carries a one-line
+summary and a pointer. `repo comments check` (`CMT-03`) fails the build if a `FILE.md#anchor` pointer in a
+`.repo/` policy stops resolving; prose pointers (`configuration.md → "Heading"`) are kept honest by review.
 
 **Keep file headers short.** A header says what the file is and the one constraint a reader must not violate.
 Depth goes here. Blocks over 20 lines fail `CMT-01` — the natural size in this repo is 4–8.
 
-**Library functions are the exception.** Every function in `.devcontainer/image/scripts/lib/` carries a full header, per
+**Library functions are the exception.** Every function in `.devcontainer/scripts/lib/` carries a full header, per
 the [Google Shell Style Guide](https://google.github.io/styleguide/shellguide.html): *"Any function in a library
 must have a function header comment regardless of length or complexity."* Tags go in Google's order — `Globals`,
 `Arguments`, `Outputs`, `Returns` — and annotate access mode (`— read`, `— modified (export)`).
@@ -347,14 +349,14 @@ Codespaces prompts for it (`ENVS-15`), and forward it from your host environment
 ### The schema is the source of truth
 
 Every variable the dev environment reads is declared in
-[`.devcontainer/env.schema.yaml`](.devcontainer/env.schema.yaml). No environment file is committed (`ENVS-26`):
+[`.devcontainer/env.schema.yaml`](../.devcontainer/env.schema.yaml). No environment file is committed (`ENVS-26`):
 post-create runs `repo env sync`, which writes `.devcontainer/.env` from the schema on first create and afterwards only
 adds what the schema has gained. Why it is generated in the container:
-[decision 0002](docs/decisions/0002-the-dev-env-file-is-generated-in-the-container.md). The schema's shape is
+[decision 0002](decisions/0002-the-dev-env-file-is-generated-in-the-container.md). The schema's shape is
 engineering-conventions' (`ENVS-03`); `repo env check` keeps it in step with the compose stacks.
 
 The product's own runtime contract is a *different* schema, at `<product>/env.schema.yaml` — see
-[LAYOUT.md](LAYOUT.md#the-env-contract) for why they sit at different levels.
+[layout.md](layout.md#the-env-contract) for why they sit at different levels.
 
 ```yaml
 bindings:
@@ -532,12 +534,13 @@ in alphabetical order on first container creation:
 
 ### Persistence
 
-All services use named Docker volumes (e.g., `musher-postgres-data`). Data persists across container restarts but is
-lost on full rebuild. For migrations, use project-level tooling (Atlas, Flyway, etc.).
+All services use named Compose volumes (e.g., `musher-postgres-data`, scoped to the `musher-dev` project). Data
+persists across container restarts but is lost on full rebuild. For migrations, use project-level tooling (Atlas,
+Flyway, etc.).
 
-### Adding Volumes
+### Adding Dev Container Volumes
 
-Follow the naming convention `musher-${devcontainerId}-<purpose>`:
+A volume `devcontainer.json` mounts follows `musher-${devcontainerId}-<purpose>` (`DEVC-08`):
 
 ```jsonc
 "source=musher-${devcontainerId}-my-tool,target=/home/vscode/.my-tool,type=volume"
@@ -552,10 +555,10 @@ Follow the naming convention `musher-${devcontainerId}-<purpose>`:
 | `postCreateCommand` | Once, on container creation | Tool installation, permissions, lefthook hooks, writing `.env` |
 | `postStartCommand` | Every container start | `docker compose up`, health checks |
 
-There is no `initializeCommand`: nothing runs on the host. The image's metadata carries its own lifecycle commands,
-which run the scripts baked at `/usr/local/share/musher-devcontainer/`; a repository's own `postCreateCommand` runs
-after them. The scripts find the workspace with `workspace_root` (the lifecycle command's working directory, or
-`MUSHER_WORKSPACE`), never from their own path, so the same code runs baked and from `.devcontainer/image/scripts/`.
+There is no `initializeCommand`: nothing runs on the host. Both hooks run scripts in `.devcontainer/scripts/`, from
+the workspace, so an edit takes effect on the next create or start with no rebuild of anything else. Repo-specific
+setup goes in `post-create.sh` → `main`, below the marked line. The scripts find the workspace with `workspace_root`
+(git's top level, or `MUSHER_WORKSPACE`).
 
 ### Skipping Base Steps
 
@@ -567,10 +570,12 @@ main() {
   base_setup_config_dirs
   base_setup_cache_dirs
   base_fix_nvm_permissions
+  base_enable_corepack
   base_setup_path
   base_install_mise
   # Skip the mise CLIs: base_install_tools
   base_install_claude
+  base_install_repo_cli
   base_verify_tools
   log "Post-create setup completed"
 }
@@ -580,8 +585,12 @@ main() {
 
 ```text
 post-create.sh              ← Entry point (repo-specific customization)
-  └── lib/base-setup.sh     ← Reusable orchestrator (mise CLIs, Claude, nvm, config/cache dirs)
-        └── lib/common.sh   ← Shared utilities (log, retry, has_cmd, ensure_writable_dir)
+  ├── lib/base-setup.sh     ← Reusable orchestrator (mise CLIs, Claude, corepack, nvm, config/cache dirs)
+  │     └── lib/common.sh   ← Shared utilities (log, retry, has_cmd, ensure_writable_dir)
+  └── lib/env-load.sh       ← Wired into the shell profiles: exports .env into every new shell
+startup.sh                  ← Every start: compose stacks, health checks
+  └── lib/motd.sh           ← The startup MOTD
+verify-toolchain.sh         ← CI: mise = min_version, every mise pin installed
 ```
 
 ---
@@ -596,7 +605,7 @@ post-create.sh              ← Entry point (repo-specific customization)
 ### Configuration Persistence
 
 AI CLI configs are stored in named volumes, one per tool per container (`musher-${devcontainerId}-<tool>-config`, the
-only form `DEVC-08` accepts), mounted via the image's `devcontainer.json` → `mounts`. This preserves authentication and
+only form `DEVC-08` accepts), mounted via `devcontainer.json` → `mounts`. This preserves authentication and
 settings across container rebuilds. `CLAUDE_CONFIG_DIR` points Claude Code at its volume, so `.claude.json` survives a
 rebuild too.
 
@@ -605,12 +614,13 @@ rebuild too.
 ## Directory Map
 
 ```text
-<product>/                    The product (absent in the template; see LAYOUT.md)
+<product>/                    The product (absent in the template; see layout.md)
 AGENTS.md                     Agent-facing contract (imports README.md; there is no CLAUDE.md)
-LAYOUT.md                     Which level a file belongs to: repository or product
-CHANGELOG.md  version.txt     Written by release-please
-docs/decisions/               Why the scaffold is shaped the way it is
-.config/                      Tool configuration (see "Where configuration lives")
+docs/
+  configuration.md            Where a file goes within its level (this file)
+  layout.md                   Which level a file belongs to: repository or product
+  decisions/                  Why the scaffold is shaped the way it is
+.config/                      Tool configuration (see "Where Configuration Lives")
   README.md                   Index: every file, its tool, and how it is reached
   lefthook.yml                Git hooks (top-level: lefthook's search stops at .config/lefthook.*)
   lefthook-local.yml          Personal hook overrides (gitignored, auto-merged)
@@ -619,13 +629,11 @@ docs/decisions/               Why the scaffold is shaped the way it is
   yaml/yamllint.yaml          YAML rules          (--config)
   actions/actionlint.yaml     Workflow rules      (-config-file)
   spelling/codespell.cfg      Spelling            (--config)
-  docker/hadolint.yaml        Dockerfile rules    (--config)
   commits/committed.toml      Commit types/scopes (--config)
 .repo/                        Declarations, and the scaffold's own `repo` CLI
   README.md                   What each policy enforces, and why
   repository.toml             Identity and [layout] (`product = ""` here)
   conventions.toml            Waivers for engineering-conventions
-  outputs.toml                The published image (OUT-01)
   pyproject.toml              uv project; declares the `repo` console-script
   tests/                      pytest suite for the policies and env tools
   governance/
@@ -644,48 +652,44 @@ docs/decisions/               Why the scaffold is shaped the way it is
 .github/
   CODEOWNERS                  Every path: @musher-dev/engineering
   dependabot.yml              Weekly updates: devcontainers, actions, docker
-  release-please/             Release configuration and manifest
-  rulesets/                   Branch and tag protection as committed JSON (infra-github applies them)
-  workflows/                  Validate, Validate Pull Request, Release
+  rulesets/                   Branch protection as committed JSON (infra-github applies it)
+  workflows/                  Validate, Validate Pull Request
 taskfiles/                    Task modules included by the root Taskfile.yml
 Taskfile.yml                  Task entry point (cannot move — root-only discovery)
 .gitattributes                Line-ending policy (`* text=auto eol=lf`)
 .devcontainer/
-  devcontainer.json           This repository's container: builds image/, adds runtimes, ports
+  devcontainer.json           The container: base image, Features, mounts, env, lifecycle, ports
   devcontainer-lock.json      Feature digests (--frozen-lockfile in CI)
   env.schema.yaml             Dev-environment contract -- the source of truth
   .env                        Written by `repo env sync` (gitignored)
-  image/                      The published image (decision 0001)
-    devcontainer.json         Platform Features, user, mounts, env, lifecycle -> metadata label
-    devcontainer-lock.json    Its Feature digests
-    Dockerfile                Bakes mise; copies scripts/ to /usr/local/share/musher-devcontainer/
-    scripts/
-      post-create.sh          One-time setup entry point
-      startup.sh              Every-start service launcher
-      verify-toolchain.sh     Asserts mise and every mise pin (CI)
-      lib/
-        base-setup.sh         Reusable tool installer (mise pins, Claude, the repo CLI)
-        common.sh             Shared utilities
-        env-load.sh           Exports .env into a shell without sourcing it
-        motd.sh               Startup MOTD renderer
-        version.sh            The release these scripts belong to (release-please)
+  features/
+    mise/                     Local Feature: pinned mise, no api.github.com call
+  scripts/
+    post-create.sh            One-time setup entry point
+    startup.sh                Every-start service launcher
+    verify-toolchain.sh       Asserts mise and every mise pin (CI)
+    lib/
+      base-setup.sh           Reusable tool installer (mise pins, Claude, corepack, the repo CLI)
+      common.sh               Shared utilities
+      env-load.sh             Exports .env into a shell without sourcing it
+      motd.sh                 Startup MOTD renderer
   stacks/                     The services, and the orchestrator that includes them
     compose.yaml              Stack orchestrator (`include:` + `name: musher-dev`)
     postgres/
-      compose.yaml             PostgreSQL with pgvector (always on)
+      compose.yaml            PostgreSQL with pgvector (always on)
       init/
-        00-init.sql            Base DB schema
+        00-init.sql           Base DB schema
         01-project.sql.example Project schema template
     redis/
-      compose.yaml             Redis (profile: redis)
+      compose.yaml            Redis (profile: redis)
     minio/
-      compose.yaml             MinIO S3 storage (profile: minio)
+      compose.yaml            MinIO S3 storage (profile: minio)
     registry/
-      compose.yaml             OCI Registry (profile: registry)
+      compose.yaml            OCI Registry (profile: registry)
     azimutt/
-      compose.yaml             DB explorer UI (profile: azimutt)
+      compose.yaml            DB explorer UI (profile: azimutt)
     observability/
-      compose.yaml             Full observability stack (profile: observability)
+      compose.yaml            Full observability stack (profile: observability)
       config/
         otel-collector-config.yaml
         tempo-config.yaml

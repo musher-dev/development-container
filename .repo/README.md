@@ -20,15 +20,15 @@ The general rules -- layout, `.config/`, workflows, rulesets, the toolchain, the
 env schema's shape -- moved to
 [engineering-conventions](https://github.com/musher-dev/engineering-conventions),
 which this repository pins in `.config/mise/config.toml` and runs with
-`conventions check` ([decision 0001](../docs/decisions/0001-the-scaffold-is-published-as-a-pinned-image.md)).
-What stays here is specific to this scaffold. A new repository pins that
-release; it does not copy this directory.
+`conventions check` ([decision 0004](../docs/decisions/0004-the-container-starts-from-the-base-image.md)).
+What stays here is what engineering-conventions does not yet cover. A new
+repository keeps this directory: post-create installs the `repo` CLI from it.
 
 That choice has a cost worth stating: a checker enforces *what*, not *why*. So
 every violation this CLI reports carries its own rationale and the action that
 resolves it — the `reason` and `fix` fields are not decoration, they are the
 documentation. The prose version lives in
-[`CONFIGURATION.md`](../CONFIGURATION.md).
+[`docs/configuration.md`](../docs/configuration.md).
 
 ## Use
 
@@ -40,9 +40,9 @@ repo ports check
 ```
 
 The CLI is installed by the devcontainer bootstrap
-(`base_install_repo_cli` in `.devcontainer/image/scripts/lib/base-setup.sh`,
-which runs `uv tool install ./.repo`; a repository without `.repo/` gets it
-from the release its image came from). To reinstall after editing it:
+(`base_install_repo_cli` in `.devcontainer/scripts/lib/base-setup.sh`, which
+runs `uv tool install ./.repo`; a repository without `.repo/` gets no `repo`).
+To reinstall after editing it:
 `task repo:install` — it passes `--reinstall`, because uv otherwise reuses the
 cached build of an unchanged version and your edit never takes effect.
 
@@ -50,7 +50,7 @@ cached build of an unchanged version and your edit never takes effect.
 
 | Policy | Codes | Enforces |
 | --- | --- | --- |
-| `layout` | `LAYOUT-07` | Dev container workspace mounts sit under the declared product, and the editor links name it ([LAYOUT.md](../LAYOUT.md#invariants)) |
+| `layout` | `LAYOUT-07` | Dev container workspace mounts sit under the declared product, and the editor links name it ([docs/layout.md](../docs/layout.md#invariants)) |
 | `paths` | `PATH-01`, `PATH-04` | Every `.gitattributes` pattern, paths-filter and `.claude/rules` `paths:` glob still matches a file, and the allowlist stays honest |
 | `env` | `ENV-03`..`ENV-05` | The dev-environment schema and the compose stacks agree: every `${VAR}` is declared, every consumer is a stack that reads it, every mirrored value matches |
 | `ports` | `PORT-01`..`PORT-05` | The port table, `forwardPorts`/`portsAttributes`, and compose published ports all agree, and forwarded ports stay in the reserved range |
@@ -90,7 +90,6 @@ fails `HOOK-01`/`HOOK-03`, and an entry that outlives what it excused fails
   pyproject.toml                 uv project; declares the `repo` console-script
   repository.toml                Identity and [layout] (REPO-01, REPO-14) -- this repo's data
   conventions.toml               Waivers for engineering-conventions -- this repo's data
-  outputs.toml                   What this repo publishes (OUT-01) -- this repo's data
   tests/                         pytest suite; fixtures are built in tmp_path
   governance/
     cli.py                       Argument parsing and exit codes

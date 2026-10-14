@@ -1,0 +1,20 @@
+{
+  "id": "mise",
+  "version": "1.0.0",
+  "name": "mise",
+  "description": "Installs a pinned mise at /usr/local/bin/mise from its GitHub release, with no api.github.com call, and puts the remote user's mise shims on PATH.",
+  "documentationURL": "https://github.com/musher-dev/development-container/blob/main/docs/configuration.md#the-mise-feature",
+  "options": {
+    "version": {
+      "type": "string",
+      "default": "2026.8.6",
+      "description": "The mise version, with or without a leading 'v'. Keep it equal to min_version in .config/mise/config.toml."
+    }
+  },
+  "containerEnv": {
+    "PATH": "/home/vscode/.local/share/mise/shims:${PATH}"
+  },
+  "installsAfter": [
+    "ghcr.io/devcontainers/features/common-utils"
+  ]
+}

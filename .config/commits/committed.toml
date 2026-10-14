@@ -11,11 +11,10 @@ no_fixup = false
 no_wip = true
 allowed_types = ["feat", "fix", "perf", "docs", "chore", "refactor", "test", "ci", "build"]
 allowed_scopes = [
-  "devcontainer",  # .devcontainer/ -- the image, its scripts, the template config
+  "devcontainer",  # .devcontainer/ -- the config, its Features and scripts
   "stacks",        # .devcontainer/stacks/ -- the compose stacks
   "config",        # .config/ -- tool configuration
   "repo",          # .repo/, docs, Taskfiles -- repository machinery
   "ci",            # .github/ -- workflows and rulesets
   "deps",          # dependency updates (Dependabot)
-  "release",       # release pull requests (release-please)
 ]

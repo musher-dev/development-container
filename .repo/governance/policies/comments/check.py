@@ -1,6 +1,6 @@
 """Detect comment blocks that have outgrown their file, and dead doc pointers.
 
-The rule this enforces is written in CONFIGURATION.md -> "Comments": say the
+The rule this enforces is written in docs/configuration.md -> "Comments": say the
 non-obvious, say it once, and point at it from everywhere else. CMT-01 caps the
 volume; CMT-03 keeps the pointers that make the trade possible from rotting.
 """
@@ -27,7 +27,6 @@ ALLOWED_LONG_BLOCKS: dict[str, str] = {}
 #: Where comments sit next to code. Markdown is absent on purpose: `#` starts a
 #: heading there, not a comment.
 SCAN_GLOBS = (
-    ".devcontainer/**/Dockerfile",
     ".devcontainer/**/*.sh",
     ".devcontainer/**/*.yaml",
     ".config/*.yml",
@@ -47,7 +46,7 @@ _DIRECTIVE = re.compile(
     r"^#\s*(!|shellcheck\b|syntax=|type:\s|noqa\b|pylint:|mypy:|fmt:|nosec\b)"
 )
 
-#: `docs="CONFIGURATION.md#anchor"` and the DOCS constants the policies share.
+#: `docs="docs/configuration.md#anchor"` and the DOCS constants the policies share.
 _DOC_REF = re.compile(r'"([A-Za-z0-9_./-]+\.md#[^"]+)"')
 
 _HEADING = re.compile(r"^#{1,6}\s+(.*)$", re.MULTILINE)

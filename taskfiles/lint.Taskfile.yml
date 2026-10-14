@@ -5,26 +5,24 @@ version: '3'
 # is what keeps the configs in .config/ instead of scattered at the repo root.
 #
 # Tool versions come from .config/mise/config.toml (the single source).
-# Policy: CONFIGURATION.md → "Where Configuration Lives".
+# Policy: docs/configuration.md → "Where Configuration Lives".
 
 vars:
   MD_CONFIG: .config/markdown/markdownlint.jsonc
   YAML_CONFIG: .config/yaml/yamllint.yaml
   ACTIONLINT_CONFIG: .config/actions/actionlint.yaml
   CODESPELL_CONFIG: .config/spelling/codespell.cfg
-  HADOLINT_CONFIG: .config/docker/hadolint.yaml
   # Directories that contain YAML this repo owns.
   YAML_PATHS: .github .devcontainer .config taskfiles Taskfile.yml
 
 tasks:
   all:
-    desc: Run every lint check (markdown, yaml, actions, spelling, Dockerfiles).
+    desc: Run every lint check (markdown, yaml, actions, spelling).
     cmds:
       - task: md
       - task: yaml
       - task: actions
       - task: spelling
-      - task: docker
 
   md:
     desc: Lint Markdown against .config/markdown/markdownlint.jsonc.
@@ -55,8 +53,3 @@ tasks:
     desc: Apply codespell's suggested corrections in place (review the diff).
     cmds:
       - codespell --config {{.CODESPELL_CONFIG}} --write-changes .
-
-  docker:
-    desc: Lint every tracked Dockerfile against .config/docker/hadolint.yaml.
-    cmds:
-      - git ls-files -z '*Dockerfile' | xargs -0 -r hadolint --config {{.HADOLINT_CONFIG}}

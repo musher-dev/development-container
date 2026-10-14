@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from governance.reporting import Violation
 
-DOCS = "LAYOUT.md#why-moves-fail-silently"
+DOCS = "docs/layout.md#why-moves-fail-silently"
 
 _WHY = (
     "A glob, directory or path that names nothing does not fail -- the hook "

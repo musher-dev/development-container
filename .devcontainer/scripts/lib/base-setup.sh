@@ -21,8 +21,6 @@ readonly _HOME="/home/${REMOTE_USER:-vscode}"
 
 # shellcheck source=common.sh
 source "${_LIB_DIR}/common.sh"
-# shellcheck source=version.sh
-source "${_LIB_DIR}/version.sh"
 
 _WORKSPACE="$(workspace_root)"
 readonly _WORKSPACE
@@ -73,17 +71,34 @@ base_fix_nvm_permissions() {
   fix_nvm_permissions
 }
 
+# Enables corepack, so a package.json `packageManager` field (pnpm@…,
+# yarn@…) resolves to exactly that version with no global install. Needs the
+# nvm ownership fix above: the shims land beside node.
+#
+# Outputs:
+#   Writes progress to stderr via log()
+base_enable_corepack() {
+  if ! has_cmd corepack; then
+    log "corepack not on PATH, skipping"
+    return 0
+  fi
+  log "Enabling corepack (pnpm, yarn)..."
+  corepack enable || log "WARNING: corepack enable failed"
+}
+
 # --- mise (pins the CLIs that have no devcontainer Feature) ---
 
-# Fallback only: the image bakes mise at /usr/local/bin/mise, which
-# `command -v` finds first. This path covers the base_install_mise fallback,
-# which installs per-user.
+# Fallback only: the mise Feature (.devcontainer/features/mise/) installs mise
+# at /usr/local/bin/mise, which `command -v` finds first. This path covers the
+# base_install_mise fallback, which installs per-user.
 readonly _MISE_BIN="${_HOME}/.local/bin/mise"
 readonly _MISE_SHIMS="${_HOME}/.local/share/mise/shims"
 
 # Puts the mise shims and ~/.local/bin on PATH for the rest of this script, so
-# mise-managed CLIs and Claude are visible to base_verify_tools (lifecycle
-# hooks don't always inherit devcontainer.json remoteEnv).
+# mise-managed CLIs and Claude are visible to base_verify_tools. The mise
+# Feature already sets the shims in containerEnv; this covers a repo without
+# it, and ~/.local/bin, which only remoteEnv adds (lifecycle hooks don't always
+# inherit remoteEnv).
 #
 # Globals:
 #   PATH — modified (export)
@@ -93,13 +108,13 @@ base_setup_path() {
 
 # Installs mise if it is not already present.
 #
-# The dev container image bakes a pinned mise at /usr/local/bin/mise
-# (ARG MISE_VERSION in .devcontainer/image/Dockerfile), so this normally
-# short-circuits.
-# The installer below is the fallback for a consuming repo that strips the
-# Dockerfile, and is deliberately unpinned because in that case there is no ARG
-# to read the pin from.
+# The mise Feature installs it at build time, so this normally short-circuits.
+# The fallback covers a repo that drops the Feature, and installs the same
+# version: the configuration's min_version. mise.run downloads a release asset
+# from github.com, not through api.github.com.
 #
+# Globals:
+#   _WORKSPACE — read, the repo root
 # Outputs:
 #   Writes progress to stderr via log()
 # Returns:
@@ -109,8 +124,13 @@ base_install_mise() {
     log "mise already installed, skipping"
     return 0
   fi
-  log "mise not baked into the image; falling back to https://mise.run..."
-  retry 3 5 bash -c 'curl -fsSL https://mise.run | sh'
+  local version
+  version="$(mise_min_version "${_WORKSPACE}")" || {
+    log "No min_version in .config/mise/config.toml, skipping mise"
+    return 0
+  }
+  log "mise Feature absent; installing mise ${version} from https://mise.run..."
+  retry 3 5 env MISE_VERSION="v${version}" bash -c 'curl -fsSL https://mise.run | sh'
 }
 
 # Installs the CLIs the workspace pins in .config/mise/config.toml, then
@@ -162,23 +182,19 @@ base_install_claude() {
 
 # The governance CLI's project in this workspace, if it carries one.
 readonly _REPO_PROJECT="${_WORKSPACE}/.repo"
-# Where a workspace without .repo/ gets the CLI from: this repository, at the
-# tag these scripts were released in.
-readonly _REPO_SOURCE="git+https://github.com/musher-dev/development-container"
 
 # Installs the `repo` CLI: the scaffold's env tools (`repo env sync` writes
 # .devcontainer/.env) and its structure policies.
 #
-# From the workspace's .repo/ when it has one (this template), so an edited
-# policy takes effect; otherwise from the release these scripts came from, so a
-# repo built on the published image needs no copy of .repo/.
+# From the workspace's .repo/, so an edited policy takes effect. A repository
+# that drops .repo/ gets no `repo`; post-create then falls back to
+# `conventions env-file` for a first .env.
 #
 # Sequenced after base_install_tools because it needs uv on PATH, and before
 # base_verify_tools because that call asserts `repo` resolves.
 #
 # Globals:
-#   _REPO_PROJECT, _REPO_SOURCE — read
-#   MUSHER_DEVCONTAINER_VERSION — read, from version.sh
+#   _REPO_PROJECT — read
 # Outputs:
 #   Writes progress to stderr via log()
 # Returns:
@@ -188,16 +204,12 @@ base_install_repo_cli() {
     log "uv not on PATH, skipping the repo CLI"
     return 0
   fi
-  if [[ -f "${_REPO_PROJECT}/pyproject.toml" ]]; then
-    log "Installing the repo CLI from .repo/..."
-    retry 3 5 uv tool install --force --reinstall "${_REPO_PROJECT}"
-  elif [[ "${MUSHER_DEVCONTAINER_VERSION}" != "0.0.0" ]]; then
-    log "Installing the repo CLI from v${MUSHER_DEVCONTAINER_VERSION}..."
-    retry 3 5 uv tool install --force \
-      "${_REPO_SOURCE}@v${MUSHER_DEVCONTAINER_VERSION}#subdirectory=.repo"
-  else
-    log "No .repo/ and no released version, skipping the repo CLI"
+  if [[ ! -f "${_REPO_PROJECT}/pyproject.toml" ]]; then
+    log "No .repo/, skipping the repo CLI"
+    return 0
   fi
+  log "Installing the repo CLI from .repo/..."
+  retry 3 5 uv tool install --force --reinstall "${_REPO_PROJECT}"
 }
 
 # --- Verify ---
@@ -206,7 +218,7 @@ base_install_repo_cli() {
 # by the container build itself.
 #
 # Only gh and claude are unconditional. `repo` is checked when
-# base_install_repo_cli had a source for it, lefthook when the repo has a
+# the workspace carries .repo/, lefthook when the repo has a
 # lefthook config, and every tool the mise config pins (task, uv, codex,
 # linters, ...) by `mise ls --missing`, so a consumer that drops a pin is never
 # failed for it.
@@ -217,7 +229,7 @@ base_install_repo_cli() {
 #   0 if all tools found, 1 if any are missing
 base_verify_tools() {
   local tools=(gh claude)
-  [[ -f "${_REPO_PROJECT}/pyproject.toml" || "${MUSHER_DEVCONTAINER_VERSION}" != "0.0.0" ]] && tools+=(repo)
+  [[ -f "${_REPO_PROJECT}/pyproject.toml" ]] && tools+=(repo)
   lefthook_config "${_WORKSPACE}" >/dev/null && tools+=(lefthook)
   local ok=0
   verify_tools "${tools[@]}" || ok=1
@@ -243,6 +255,7 @@ base_setup() {
   base_setup_config_dirs
   base_setup_cache_dirs
   base_fix_nvm_permissions
+  base_enable_corepack
   base_setup_path
   base_install_mise
   base_install_tools

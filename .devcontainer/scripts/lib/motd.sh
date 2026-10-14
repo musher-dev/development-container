@@ -152,8 +152,6 @@ _motd_quickref() {
 #
 # Globals:
 #   _BOLD, _DIM, _YELLOW, _RESET — color codes set by _motd_setup_colors
-# Arguments:
-#   $1 — .devcontainer directory (unused; kept for call-site stability)
 _motd_env_warnings() {
   has_cmd repo || return 0
 
@@ -179,7 +177,7 @@ _motd_tips() {
   echo "  * Enable services:         task env:setup"
   echo "  * Available profiles:      redis, minio, registry,"
   echo "                             azimutt, observability"
-  echo "  * Tool versions:           CONFIGURATION.md (Runtimes & Tools)"
+  echo "  * Tool versions:           docs/configuration.md (Runtimes & Tools)"
 }
 
 # Renders the full MOTD to stdout.
@@ -202,7 +200,7 @@ show_motd() {
   _motd_header
   _motd_runtimes
   _motd_services "$compose_file" "${devcontainer_dir:+${devcontainer_dir}/.env}"
-  _motd_env_warnings "$devcontainer_dir"
+  _motd_env_warnings
   _motd_quickref
   _motd_tips
   echo "${_BOLD}${border}${_RESET}"

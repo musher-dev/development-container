@@ -17,7 +17,7 @@ WORKSPACE_PREFIX = "/workspaces/${localWorkspaceFolderBasename}/"
 
 #: VS Code list settings that must name the product, keyed by the manifest
 #: that marks its ecosystem. Only Rust's is enforced: it is the adapter proven
-#: in the org (host-agent). The rest are "verify on first adoption" in LAYOUT.md.
+#: in the org (host-agent). The rest are "verify on first adoption" in docs/layout.md.
 EDITOR_LINKS = {
     "Cargo.toml": {"rust-analyzer.linkedProjects": "{product}/Cargo.toml"},
 }

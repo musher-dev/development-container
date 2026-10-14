@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from governance.reporting import Violation
 
-DEV = "CONFIGURATION.md#environment-variables"
+DEV = "docs/configuration.md#environment-variables"
 
 
 def undeclared_reference(name: str, where: str) -> Violation:

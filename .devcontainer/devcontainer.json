@@ -1,22 +1,19 @@
 // Musher Dev Container — Batteries-included template.
 // Uncomment optional blocks as needed. Comment out what you don't use.
 //
-// This builds the image from source in image/, so the template tests its own
-// changes. Once a release is published, it becomes
-//   "image": "ghcr.io/musher-dev/development-container:<version>"
-// and drops everything the image's metadata already carries (the platform
-// Features, mounts, env and lifecycle commands) -- README.md → "Use the image".
+// No image of our own: the Microsoft base image, the Features below, and the
+// lifecycle scripts in scripts/. Decision: docs/decisions/0004.
 {
   "name": "Musher Dev",
-  "build": {
-    "dockerfile": "image/Dockerfile",
-    "context": "image"
-  },
+  // The LTS tag, not floating `:ubuntu`, which rolls to interim releases that
+  // docker-in-docker does not support. Dependabot raises Features, not this
+  // tag: bump it by hand.
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
 
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind,consistency=cached",
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
 
-  // Which tier a tool belongs in: CONFIGURATION.md → "Runtimes & Tools".
+  // Which tier a tool belongs in: docs/configuration.md → "Runtimes & Tools".
   "features": {
     // --- Platform ---
     "ghcr.io/devcontainers/features/common-utils:2": {
@@ -29,6 +26,11 @@
     "ghcr.io/devcontainers/features/git:1": {},
     "ghcr.io/devcontainers/features/github-cli:1": { "version": "2.96.0" },
     "ghcr.io/devcontainers/features/docker-in-docker:4": {},
+    // Every CLI that is not a Feature is a mise pin in .config/mise/config.toml.
+    // Local, not devcontainers-extra's mise Feature: that one calls
+    // api.github.com on every build. Keep `version` equal to the config's
+    // min_version (TOOL-04); verify-toolchain.sh fails on drift.
+    "./features/mise": { "version": "2026.8.6" },
 
     // --- Runtimes ---
     "ghcr.io/devcontainers/features/node:2": { "version": "24.18.0" },
@@ -45,9 +47,11 @@
       "installGradle": false,
       "installMaven": false
     },
-    // bun, uv and task are mise pins in .config/mise/config.toml, not
-    // Features. Why: CONFIGURATION.md → "Runtimes & Tools".
     "ghcr.io/devcontainers-extra/features/deno:1": { "version": "2.9.2" },
+    // Rust (uncomment for a Cargo product, as host-agent). Pair it with the
+    // target/ volume under "mounts", and pin the toolchain in the product's
+    // rust-toolchain.toml.
+    // "ghcr.io/devcontainers/features/rust:1": { "version": "1.98.1", "profile": "minimal" },
 
     // --- Linting ---
     "ghcr.io/lukewiwa/features/shellcheck:0": { "version": "v0.11.0" },
@@ -55,10 +59,8 @@
     // --- Database tooling ---
     "ghcr.io/robbert229/devcontainer-features/postgresql-client:1": { "version": "16" }
 
-    // --- Optional infrastructure tooling (uncomment as needed) ---
-    // "ghcr.io/devcontainers-extra/features/opentofu:1": {},
-    // "ghcr.io/devcontainers-extra/features/digitalocean-cli:1": {},
-    // "ghcr.io/devcontainers-extra/features/cloudflared:1": {}
+    // Optional infrastructure (OpenTofu, tflint, doctl, cloudflared) and
+    // protobuf (buf) tools are commented mise pins in .config/mise/config.toml.
   },
 
   "containerUser": "vscode",
@@ -70,6 +72,7 @@
   // Allow debuggers (gdb, strace, delve) to attach to processes.
   "capAdd": ["SYS_PTRACE"],
 
+  // One volume per tool per container (DEVC-08): logins survive a rebuild.
   "mounts": [
     "source=musher-${devcontainerId}-gh-config,target=/home/vscode/.config/gh,type=volume",
     "source=musher-${devcontainerId}-claude-config,target=/home/vscode/.claude,type=volume",
@@ -77,7 +80,7 @@
     // Uncomment to persist Docker-in-Docker data across rebuilds:
     // "source=musher-${devcontainerId}-dind-data,target=/var/lib/docker/volumes,type=volume"
     // Product build output (e.g. Rust's target/), kept off the bind mount.
-    // Must sit under the declared product -- LAYOUT.md → "Ecosystem Adapters":
+    // Must sit under the declared product -- docs/layout.md → "Ecosystem Adapters":
     // "source=musher-${devcontainerId}-target,target=/workspaces/${localWorkspaceFolderBasename}/<product>/target,type=volume"
   ],
 
@@ -98,6 +101,10 @@
     // lands in ~/ -- outside the claude volume -- and is lost on every rebuild.
     "CLAUDE_CONFIG_DIR": "/home/vscode/.claude",
 
+    // corepack resolves pnpm/yarn from package.json `packageManager` without
+    // asking first; post-create runs `corepack enable`.
+    "COREPACK_ENABLE_DOWNLOAD_PROMPT": "0",
+
     "PYTHONUNBUFFERED": "1",
     "PYTHONDONTWRITEBYTECODE": "1",
     "UV_LINK_MODE": "copy",
@@ -114,17 +121,17 @@
   },
 
   "remoteEnv": {
-    // mise shims (task, uv, codex, lefthook, ...) + ~/.local/bin (Claude
-    // Code). mise itself is baked in /usr/local/bin.
-    "PATH": "/home/vscode/.local/share/mise/shims:/home/vscode/.local/bin:${containerEnv:PATH}"
+    // ~/.local/bin (Claude Code). The mise Feature puts mise itself and its
+    // shims (task, uv, codex, lefthook, ...) on PATH.
+    "PATH": "/home/vscode/.local/bin:${containerEnv:PATH}"
   },
 
   // No initializeCommand: nothing runs on the host. post-create writes
   // .devcontainer/.env from env.schema.yaml inside the container.
   // Line endings are enforced repo-wide by .gitattributes (`* text=auto eol=lf`).
   "waitFor": "postCreateCommand",
-  "postCreateCommand": ["bash", ".devcontainer/image/scripts/post-create.sh"],
-  "postStartCommand": ["bash", ".devcontainer/image/scripts/startup.sh"],
+  "postCreateCommand": ["bash", ".devcontainer/scripts/post-create.sh"],
+  "postStartCommand": ["bash", ".devcontainer/scripts/startup.sh"],
 
   "forwardPorts": [15432, 15433, 15434, 15435, 15436, 15440, 15441, 15442, 15443, 15444, 15445, 15446, 15447, 15448, 15460],
   "portsAttributes": {

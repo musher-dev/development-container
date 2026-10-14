@@ -1,9 +1,10 @@
 ---
 title: The image bakes only mise; every other CLI is a locked mise pin
-date: 2026-10-03
-status: accepted
+date: 2026-10-14
+status: superseded
 deciders: ["@justinmerrell"]
 supersedes: []
+superseded_by: ["0004"]
 ---
 
 # 0003 — The image bakes only mise; every other CLI is a locked mise pin

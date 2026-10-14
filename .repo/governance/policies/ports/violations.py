@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from governance.reporting import Violation
 
-DOCS = "CONFIGURATION.md#port-allocation"
+DOCS = "docs/configuration.md#port-allocation"
 
 _WHY_DRIFT = (
-    "A port is declared in three places -- the CONFIGURATION.md table, "
+    "A port is declared in three places -- the docs/configuration.md table, "
     "devcontainer.json, and the stack's compose.yaml. Nothing links them, so "
     "they drift silently and the symptom is a service that starts but is "
     "unreachable from the host."
@@ -52,8 +52,8 @@ def undocumented(port: int) -> Violation:
         summary=f"port {port} is forwarded but absent from the port table",
         reason=_WHY_DRIFT + " The table is the only place a human looks to "
         "find a free port before claiming one.",
-        fix=f"Add a row for {port} to the Port Allocation table in CONFIGURATION.md.",
-        where="CONFIGURATION.md",
+        fix=f"Add a row for {port} to the Port Allocation table in docs/configuration.md.",
+        where="docs/configuration.md",
         docs=DOCS,
     )
 
@@ -64,8 +64,8 @@ def documented_but_unused(port: int) -> Violation:
         summary=f"port {port} is in the port table but nothing forwards it",
         reason=_WHY_DRIFT + " A phantom row makes the range look more "
         "crowded than it is and the next service skips a free number.",
-        fix=f"Remove the {port} row from CONFIGURATION.md, or forward it.",
-        where="CONFIGURATION.md",
+        fix=f"Remove the {port} row from docs/configuration.md, or forward it.",
+        where="docs/configuration.md",
         docs=DOCS,
     )
 
@@ -79,7 +79,7 @@ def out_of_range(port: int, low: int, high: int, source: str) -> Violation:
             "project can allocate its own ports without checking for "
             "collisions against every stack."
         ),
-        fix=f"Move it into {low}-{high}, or widen the range in CONFIGURATION.md.",
+        fix=f"Move it into {low}-{high}, or widen the range in docs/configuration.md.",
         where=source,
         docs=DOCS,
     )

@@ -2,13 +2,13 @@ version: '3'
 
 # Task entry point. This file must stay at the repo root: Task only discovers
 # Taskfile.* there, and --taskfile would break bare `task <name>`. Tool config
-# lives in .config/ instead -- see CONFIGURATION.md → "Where Configuration Lives".
+# lives in .config/ instead -- see docs/configuration.md → "Where Configuration Lives".
 #
 # Environment tasks (tools:*, env:*) stay here because they orchestrate the dev
 # container itself. Everything else is a module under taskfiles/.
 #
 # The env:* tasks wrap `repo env`, whose source of truth is
-# .devcontainer/env.schema.yaml -- CONFIGURATION.md → "Environment Variables".
+# .devcontainer/env.schema.yaml -- docs/configuration.md → "Environment Variables".
 #
 # setup, lint and check are the verbs every Musher repository answers to
 # (TASK-10).
@@ -22,8 +22,8 @@ includes:
     taskfile: taskfiles/repo.Taskfile.yml
 
 vars:
-  # With a product declared in .repo/layout.toml, tasks reach its toolchain via
-  # `dir: '{{.PRODUCT_DIR}}'` (LAYOUT-09 checks it). See LAYOUT.md.
+  # With a product declared under [layout] in .repo/repository.toml, tasks
+  # reach its toolchain via `dir: '{{.PRODUCT_DIR}}'`. See docs/layout.md.
   # PRODUCT_DIR: '{{.ROOT_DIR}}/<product>'
   ENV_FILE: .devcontainer/.env
 
@@ -36,7 +36,7 @@ tasks:
       - repo env sync
 
   lint:
-    desc: Run every lint check (markdown, yaml, actions, spelling, Dockerfiles).
+    desc: Run every lint check (markdown, yaml, actions, spelling).
     cmds:
       - task: lint:all
 
@@ -70,7 +70,7 @@ tasks:
   stacks:restart:
     desc: Bring the compose stacks up to match the current .env (skips stacks missing a value).
     cmds:
-      - bash .devcontainer/image/scripts/startup.sh
+      - bash .devcontainer/scripts/startup.sh
 
   env:setup:
     desc: Fill in the values the enabled stacks need, interactively.

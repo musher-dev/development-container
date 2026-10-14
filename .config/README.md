@@ -4,7 +4,7 @@ Every linter, formatter, and hook config lives here. One directory, one purpose:
 if a tool needs a config file and it is not provisioning the container, it goes
 in here.
 
-Policy and rationale: [`CONFIGURATION.md`](../CONFIGURATION.md). Enforcement:
+Policy and rationale: [`docs/configuration.md`](../docs/configuration.md). Enforcement:
 engineering-conventions' CONF family (`conventions check`).
 
 ## Index
@@ -17,7 +17,6 @@ engineering-conventions' CONF family (`conventions check`).
 | `yaml/yamllint.yaml` | yamllint | `-c .config/yaml/yamllint.yaml` |
 | `actions/actionlint.yaml` | actionlint | `-config-file .config/actions/actionlint.yaml` |
 | `spelling/codespell.cfg` | codespell | `--config .config/spelling/codespell.cfg` |
-| `docker/hadolint.yaml` | hadolint | `--config .config/docker/hadolint.yaml` |
 | `commits/committed.toml` | committed | `--config .config/commits/committed.toml` (commit-msg hook, PR title workflow) |
 | `mise/config.toml` | mise | **Auto-discovered.** mise reads `.config/mise/config.toml` from the project root (TOOL-01) |
 | `mise/mise.lock` | mise | Auto-discovered beside the config; `mise lock` writes it (TOOL-05) |
@@ -58,7 +57,7 @@ from that same file via `jdx/mise-action`.
 | `compose.yaml`, stack configs | `.devcontainer/` | Same — environment, not code quality |
 | `.gitattributes`, `.gitignore` | Repo root | Git reads these from the root only |
 | VS Code settings | `devcontainer.json` | `customizations.vscode.settings` is the single editor source |
-| Product-native configs (`rustfmt.toml`, `.cargo/`, `tsconfig.json`, `ruff.toml`) | `<product>/` | Their tools find them by walking up from the product; see [LAYOUT.md](../LAYOUT.md) |
+| Product-native configs (`rustfmt.toml`, `.cargo/`, `tsconfig.json`, `ruff.toml`) | `<product>/` | Their tools find them by walking up from the product; see [docs/layout.md](../docs/layout.md) |
 
 ## A trap worth knowing
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from governance.reporting import Violation
 
-DOCS = "CONFIGURATION.md#comments"
+DOCS = "docs/configuration.md#comments"
 
 
 def block_too_long(path: str, line: int, length: int, limit: int) -> Violation:
@@ -15,10 +15,10 @@ def block_too_long(path: str, line: int, length: int, limit: int) -> Violation:
             "This template is read before it is run, so a header that buries the "
             "file is a cost paid by every reader. Blocks here run 4-8 lines; past "
             "the limit the content is almost always rationale, which belongs in "
-            "CONFIGURATION.md with a pointer left behind."
+            "docs/configuration.md with a pointer left behind."
         ),
         fix=(
-            "Move the detail into CONFIGURATION.md and leave a one-line summary "
+            "Move the detail into docs/configuration.md and leave a one-line summary "
             "and a pointer, or register the block in ALLOWED_LONG_BLOCKS with a "
             "reason."
         ),

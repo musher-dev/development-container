@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from governance.reporting import Violation
 
-ADAPTERS = "LAYOUT.md#ecosystem-adapters"
+ADAPTERS = "docs/layout.md#ecosystem-adapters"
 
 _SILENT = (
     "Tools that name the product by path do not fail when the path is wrong: "

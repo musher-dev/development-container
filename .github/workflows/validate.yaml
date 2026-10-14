@@ -36,7 +36,7 @@ jobs:
         env:
           SHELLCHECK_OPTS: -x --source-path=SCRIPTDIR
         with:
-          scandir: .devcontainer/image/scripts
+          scandir: .devcontainer
 
   compose:
     name: Compose Config
@@ -100,9 +100,6 @@ jobs:
       # repository to every enforced family (.repo/conventions.toml).
       - name: Check the repository against its conventions
         run: conventions check --fail-on warning
-      # IMAGE-06 and IMAGE-10: every Dockerfile passes hadolint.
-      - name: Lint the Dockerfiles
-        run: conventions hadolint --config .config/docker/hadolint.yaml
 
   governance:
     name: Repo Structure
@@ -130,14 +127,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
-      # Proves both configurations still build (DEVC-10). --frozen-lockfile
-      # fails when a devcontainer-lock.json no longer matches its config.
-      - name: Build the template's dev container
+      # Proves the configuration still builds (DEVC-10). --frozen-lockfile
+      # fails when devcontainer-lock.json no longer matches devcontainer.json.
+      - name: Build the dev container
         run: npx -y @devcontainers/cli@0.89.0 build --workspace-folder . --frozen-lockfile
-      - name: Build the published image's definition
-        run: >-
-          npx -y @devcontainers/cli@0.89.0 build --workspace-folder .
-          --config .devcontainer/image/devcontainer.json --frozen-lockfile
 
   build:
     name: Devcontainer Build
@@ -151,7 +144,7 @@ jobs:
         uses: devcontainers/ci@513af61f4de4f75d37e4438f184ba4358f0fc1ca  # v0.3.1900000450
         with:
           # Runs after post-create, so it proves mise installed every pin.
-          runCmd: bash .devcontainer/image/scripts/verify-toolchain.sh
+          runCmd: bash .devcontainer/scripts/verify-toolchain.sh
 
   required:
     name: Validate / Required

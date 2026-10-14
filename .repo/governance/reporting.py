@@ -31,7 +31,7 @@ class Violation:
     where: str = ""
     """Repo-relative path (and optional :line) the violation attaches to."""
 
-    docs: str = "CONFIGURATION.md#where-configuration-lives"
+    docs: str = "docs/configuration.md#where-configuration-lives"
     """Pointer to the human-facing policy."""
 
     def render(self) -> str:

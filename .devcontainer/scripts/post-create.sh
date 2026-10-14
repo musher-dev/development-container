@@ -65,7 +65,10 @@ setup_env_file() {
   local rc
   for rc in "${HOME}/.zshrc" "${HOME}/.bashrc"; do
     [[ -f "${rc}" ]] || continue
-    grep -qF "${marker}" "${rc}" && continue
+    grep -qF "${loader}" "${rc}" && continue
+    # A loader line from an older layout points at a path that has moved:
+    # drop it and its marker so the line below replaces it.
+    sed -i "/^${marker}\$/{N;d}" "${rc}"
     {
       echo ""
       echo "${marker}"
