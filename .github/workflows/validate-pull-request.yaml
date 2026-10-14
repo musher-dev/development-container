@@ -38,10 +38,18 @@ jobs:
       # The rules the commit-msg hook applies, from the same file (COMMIT-04).
       # The title reaches committed on stdin from the environment, never
       # interpolated into the script, so it cannot inject into the shell.
+      # Dependabot capitalizes its fixed verb ("chore(deps): Bump ...") with no
+      # option to change it, so only that word is lowercased, only for it.
       - name: Check the title passes committed
         env:
           TITLE: ${{ github.event.pull_request.title }}
-        run: printf '%s\n' "$TITLE" | committed --config .config/commits/committed.toml --commit-file -
+          DEPENDABOT: ${{ github.event.pull_request.user.login == 'dependabot[bot]' }}
+        run: |
+          set -euo pipefail
+          if [[ "$DEPENDABOT" == "true" ]]; then
+            TITLE="${TITLE/): Bump /): bump }"
+          fi
+          printf '%s\n' "$TITLE" | committed --config .config/commits/committed.toml --commit-file -
 
       # committed cannot require a scope or a lowercase subject; the action
       # checks those, with the types and scopes read from the same file.
@@ -66,4 +74,7 @@ jobs:
           types: ${{ steps.allowed.outputs.types }}
           scopes: ${{ steps.allowed.outputs.scopes }}
           requireScope: true
-          subjectPattern: ^[a-z].+$
+          # Dependabot's "Bump" is the one capital allowed (see above).
+          subjectPattern: >-
+            ${{ github.event.pull_request.user.login == 'dependabot[bot]'
+            && '^(?:[a-z]|Bump ).+$' || '^[a-z].+$' }}
