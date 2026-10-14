@@ -48,12 +48,13 @@ jobs:
           DEPENDABOT: ${{ github.event.pull_request.user.login == 'dependabot[bot]' }}
         run: |
           set -euo pipefail
-          config=.config/commits/committed.toml
           if [[ "$DEPENDABOT" == "true" ]]; then
-            sed 's/^subject_length = .*/subject_length = 0/' "$config" > "$RUNNER_TEMP/committed.toml"
-            config="$RUNNER_TEMP/committed.toml"
+            relaxed="$RUNNER_TEMP/committed.toml"
+            sed 's/^subject_length = .*/subject_length = 0/' .config/commits/committed.toml > "$relaxed"
+            printf '%s\n' "$TITLE" | committed --config "$relaxed" --commit-file -
+          else
+            printf '%s\n' "$TITLE" | committed --config .config/commits/committed.toml --commit-file -
           fi
-          printf '%s\n' "$TITLE" | committed --config "$config" --commit-file -
 
       # committed cannot require a scope or a lowercase subject; the action
       # checks those, with the types and scopes read from the same file.
