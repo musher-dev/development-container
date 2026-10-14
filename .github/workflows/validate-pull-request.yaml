@@ -38,8 +38,10 @@ jobs:
       # The rules the commit-msg hook applies, from the same file (COMMIT-04).
       # The title reaches committed on stdin from the environment, never
       # interpolated into the script, so it cannot inject into the shell.
-      # Dependabot capitalizes its fixed verb ("chore(deps): Bump ...") with no
-      # option to change it, so only that word is lowercased, only for it.
+      # Dependabot titles name the full package ("Bump ghcr.io/devcontainers/
+      # features/common-utils from ... to ...") with no option to shorten them,
+      # so for Dependabot alone the subject-length limit is lifted; every other
+      # rule still applies.
       - name: Check the title passes committed
         env:
           TITLE: ${{ github.event.pull_request.title }}
@@ -47,9 +49,12 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "$DEPENDABOT" == "true" ]]; then
-            TITLE="${TITLE/): Bump /): bump }"
+            relaxed="$RUNNER_TEMP/committed.toml"
+            sed 's/^subject_length = .*/subject_length = 0/' .config/commits/committed.toml > "$relaxed"
+            printf '%s\n' "$TITLE" | committed --config "$relaxed" --commit-file -
+          else
+            printf '%s\n' "$TITLE" | committed --config .config/commits/committed.toml --commit-file -
           fi
-          printf '%s\n' "$TITLE" | committed --config .config/commits/committed.toml --commit-file -
 
       # committed cannot require a scope or a lowercase subject; the action
       # checks those, with the types and scopes read from the same file.
@@ -74,7 +79,8 @@ jobs:
           types: ${{ steps.allowed.outputs.types }}
           scopes: ${{ steps.allowed.outputs.scopes }}
           requireScope: true
-          # Dependabot's "Bump" is the one capital allowed (see above).
+          # Dependabot capitalizes its fixed verb ("chore(deps): Bump ...") with
+          # no option to change it; that word is the one capital allowed.
           subjectPattern: >-
             ${{ github.event.pull_request.user.login == 'dependabot[bot]'
             && '^(?:[a-z]|Bump ).+$' || '^[a-z].+$' }}
