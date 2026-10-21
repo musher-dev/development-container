@@ -599,9 +599,10 @@ Two rules keep a new volume working. Give it a target whose parent already exist
 missing directory on the way as root, and a root-owned `~/.local` stops mise and Claude Code from installing. And add
 it to `base_setup_config_dirs`, because a fresh volume arrives root-owned.
 
-To start a volume over, remove it on the **host** with the container stopped: inside the container, `docker` reaches
-Docker-in-Docker's daemon, not the host's. `awk '$5 ~ "^/home/vscode" {print $4}' /proc/self/mountinfo`, run in the
-container, prints each volume's path, `…/volumes/<name>/_data`; then, on the host, `docker volume rm <name>`.
+To start a volume over, work on the **host**, because inside the container `docker` talks to Docker-in-Docker's own
+daemon. List the container's volumes with `docker inspect -f '{{range .Mounts}}{{.Name}} {{end}}' <container>`
+(`docker ps -a` finds it), remove the container (`docker rm -f <container>`; a stopped one still holds its volumes),
+run `docker volume rm <name>`, then reopen the folder in the container.
 
 ---
 
