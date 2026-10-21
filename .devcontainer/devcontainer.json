@@ -99,11 +99,6 @@
   //   "EXAMPLE_API_KEY": { "description": "...", "documentationUrl": "https://..." }
   // },
 
-  // The codespace machine. `cpus` alone picks the size; a `memory` equal to a
-  // Docker Desktop VM's size reads as unmet locally (binary units) and warns
-  // on every open.
-  // "hostRequirements": { "cpus": 4 },
-
   "containerEnv": {
     // Auto-trust .config/mise/config.toml so `mise install` runs without a
     // prompt. mise finds the file itself.
@@ -184,14 +179,6 @@
   },
 
   "customizations": {
-    // A codespace's token reads only this repository. Name each other private
-    // repository the dev tasks read (release assets, GHCR images, GitHub
-    // Packages publishers); Codespaces asks once, at creation.
-    // "codespaces": {
-    //   "repositories": {
-    //     "musher-dev/<repo>": { "permissions": { "contents": "read", "packages": "read" } }
-    //   }
-    // },
     "vscode": {
       "extensions": [
         // --- AI ---
