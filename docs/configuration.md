@@ -601,7 +601,7 @@ it to `base_setup_config_dirs`, because a fresh volume arrives root-owned.
 
 To start a volume over, remove it on the **host** with the container stopped: inside the container, `docker` reaches
 Docker-in-Docker's daemon, not the host's. `awk '$5 ~ "^/home/vscode" {print $4}' /proc/self/mountinfo`, run in the
-container, prints each volume's name; then, on the host, `docker volume rm <name>`.
+container, prints each volume's path, `…/volumes/<name>/_data`; then, on the host, `docker volume rm <name>`.
 
 ---
 

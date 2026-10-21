@@ -112,9 +112,9 @@ If settings aren't applying after changes, rebuild without cache:
 
 Logins, sessions, history and caches live on `musher-${devcontainerId}-<purpose>` volumes, so **Rebuild Container**
 keeps them ([docs/configuration.md → Adding Dev Container Volumes](docs/configuration.md#adding-dev-container-volumes)).
-To start one over, print the names from inside the container with
-`awk '$5 ~ "^/home/vscode" {print $4}' /proc/self/mountinfo`, stop the container, and run `docker volume rm <name>` on
-the **host**: inside, `docker` talks to Docker-in-Docker's own daemon.
+To start one over, find its name inside the container: `awk '$5 ~ "^/home/vscode" {print $4}' /proc/self/mountinfo`
+prints each volume's path, `…/volumes/<name>/_data`. Then stop the container and run `docker volume rm <name>` on the
+**host**: inside, `docker` talks to Docker-in-Docker's own daemon.
 
 ### Volume permission errors
 
