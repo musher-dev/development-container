@@ -15,7 +15,10 @@ Docker-in-Docker, Task, and consistent VS Code settings. Comment out what you do
   [`.config/mise/config.toml`](.config/mise/config.toml)
 - Opt-in, commented out until you need them: Rust (a Feature), OpenTofu, tflint, terraform-docs, doctl, cloudflared
   and buf (mise pins)
-- Docker-in-Docker, Git + GitHub CLI, Claude Code
+- Docker-in-Docker, Git + GitHub CLI, Claude Code (starting at max effort) and its VS Code extension
+- State that survives a rebuild: the gh, Claude Code and Codex logins and sessions, shell and REPL history, and the
+  download caches, each on a volume of its own
+- A GitHub credential with no login: gh is seeded from your host, and git pushes through it
 - GitLens, YAML, TOML, Copilot, Go, Python, Ruff, ESLint, Docker extensions
 - Format on save, rulers, trailing whitespace trimming
 
@@ -104,6 +107,15 @@ Nothing is released: a repository takes the template once and owns its copy from
 If settings aren't applying after changes, rebuild without cache:
 
 **Command Palette** → **Dev Containers: Rebuild Container Without Cache**
+
+### Resetting persisted state
+
+Logins, sessions, history and caches live on `musher-${devcontainerId}-<purpose>` volumes, so **Rebuild Container**
+keeps them ([docs/configuration.md → Adding Dev Container Volumes](docs/configuration.md#adding-dev-container-volumes)).
+To start one over, work on the **host**, because inside the container `docker` talks to Docker-in-Docker's own daemon.
+List the container's volumes with `docker inspect -f '{{range .Mounts}}{{.Name}} {{end}}' <container>` (`docker ps -a`
+finds it), remove the container (`docker rm -f <container>`; a stopped one still holds its volumes), run
+`docker volume rm <name>`, then reopen the folder in the container.
 
 ### Volume permission errors
 

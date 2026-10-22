@@ -72,15 +72,22 @@
   // Allow debuggers (gdb, strace, delve) to attach to processes.
   "capAdd": ["SYS_PTRACE"],
 
-  // One volume per tool per container (DEVC-08): logins survive a rebuild.
+  // One volume per purpose per container (DEVC-08): logins, agent sessions,
+  // shell history and download caches survive a rebuild. Each target's parent
+  // already exists in the image, so Docker creates no root-owned directory on
+  // the way; post-create takes ownership of the volumes themselves.
   "mounts": [
     "source=musher-${devcontainerId}-gh-config,target=/home/vscode/.config/gh,type=volume",
     "source=musher-${devcontainerId}-claude-config,target=/home/vscode/.claude,type=volume",
-    "source=musher-${devcontainerId}-codex-config,target=/home/vscode/.codex,type=volume"
-    // Uncomment to persist Docker-in-Docker data across rebuilds:
-    // "source=musher-${devcontainerId}-dind-data,target=/var/lib/docker/volumes,type=volume"
-    // Product build output (e.g. Rust's target/), kept off the bind mount.
-    // Must sit under the declared product -- docs/layout.md → "Ecosystem Adapters":
+    "source=musher-${devcontainerId}-codex-config,target=/home/vscode/.codex,type=volume",
+    "source=musher-${devcontainerId}-shell-history,target=/home/vscode/.shell-history,type=volume",
+    "source=musher-${devcontainerId}-cache,target=/home/vscode/.cache,type=volume"
+    // Docker-in-Docker needs no line here: its Feature keeps /var/lib/docker
+    // and /var/lib/containerd on volumes of its own, which outlive a rebuild.
+    // Product dependencies and build output (node_modules/, Rust's target/),
+    // kept off the bind mount. Must sit under the declared product --
+    // docs/layout.md → "Ecosystem Adapters":
+    // "source=musher-${devcontainerId}-node-modules,target=/workspaces/${localWorkspaceFolderBasename}/<product>/node_modules,type=volume"
     // "source=musher-${devcontainerId}-target,target=/workspaces/${localWorkspaceFolderBasename}/<product>/target,type=volume"
   ],
 
@@ -100,6 +107,17 @@
     // Claude keeps .claude.json beside its config dir, so without this it
     // lands in ~/ -- outside the claude volume -- and is lost on every rebuild.
     "CLAUDE_CONFIG_DIR": "/home/vscode/.claude",
+
+    // Every Claude Code session starts at max effort. An env var because the
+    // settings file's effortLevel has no "max"; it also outranks /effort, so
+    // start a lighter session as `CLAUDE_CODE_EFFORT_LEVEL=auto claude`.
+    "CLAUDE_CODE_EFFORT_LEVEL": "max",
+
+    // REPL histories join the shell's on its volume; post-create points zsh
+    // and bash there.
+    "NODE_REPL_HISTORY": "/home/vscode/.shell-history/node_repl_history",
+    "PYTHON_HISTORY": "/home/vscode/.shell-history/python_history",
+    "PSQL_HISTORY": "/home/vscode/.shell-history/psql_history",
 
     // corepack resolves pnpm/yarn from package.json `packageManager` without
     // asking first; post-create runs `corepack enable`.
@@ -123,15 +141,23 @@
   "remoteEnv": {
     // ~/.local/bin (Claude Code). The mise Feature puts mise itself and its
     // shims (task, uv, codex, lefthook, ...) on PATH.
-    "PATH": "/home/vscode/.local/bin:${containerEnv:PATH}"
+    "PATH": "/home/vscode/.local/bin:${containerEnv:PATH}",
+
+    // The host's GH_TOKEN, when it exports one: the first credential
+    // lib/github-auth.sh offers gh. Not GH_TOKEN itself, which would override
+    // gh's stored login on every call.
+    "MUSHER_HOST_GH_TOKEN": "${localEnv:GH_TOKEN}"
   },
 
   // No initializeCommand: nothing runs on the host. post-create writes
   // .devcontainer/.env from env.schema.yaml inside the container.
   // Line endings are enforced repo-wide by .gitattributes (`* text=auto eol=lf`).
+  // post-attach finishes the GitHub credential once VS Code has copied the
+  // host's ~/.gitconfig, which happens only after post-create.
   "waitFor": "postCreateCommand",
   "postCreateCommand": ["bash", ".devcontainer/scripts/post-create.sh"],
   "postStartCommand": ["bash", ".devcontainer/scripts/startup.sh"],
+  "postAttachCommand": ["bash", ".devcontainer/scripts/post-attach.sh"],
 
   "forwardPorts": [15432, 15433, 15434, 15435, 15436, 15440, 15441, 15442, 15443, 15444, 15445, 15446, 15447, 15448, 15460],
   "portsAttributes": {
@@ -155,6 +181,10 @@
   "customizations": {
     "vscode": {
       "extensions": [
+        // --- AI ---
+        // Claude Code's editor integration; the CLI comes from post-create.
+        "anthropic.claude-code",
+
         // --- Core tooling ---
         "redhat.vscode-yaml",
         "tamasfe.even-better-toml",
