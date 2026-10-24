@@ -723,7 +723,7 @@ docs/
     policies/hooks/           lefthook ↔ CI job parity
     policies/comments/        Comment-block size and live docs pointers
 .github/
-  CODEOWNERS                  Every path: @musher-dev/engineering
+  CODEOWNERS                  Selective gate: .github/, .repo/, mise Feature, scripts
   dependabot.yml              Weekly updates: devcontainers, actions, docker
   rulesets/                   Branch protection as committed JSON (infra-github applies it)
   workflows/                  Validate, Validate Pull Request

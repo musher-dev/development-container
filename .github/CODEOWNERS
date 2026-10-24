@@ -1,2 +1,49 @@
-# Every path is owned by the engineering team (COMM-08).
-* @musher-dev/engineering
+# CODEOWNERS — the ownership half of the selective code-owner review gate
+#
+# Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+# The standard: musher-dev/platform ADR 0134, checked by engineering-conventions
+# COMM-09 (no `*` catch-all) and COMM-10 (every anchored path exists). The
+# other half: .github/rulesets/main-branch.json (`require_code_owner_review`).
+#
+# How review works here:
+#
+#   A pull request that touches NO path listed below merges on green CI alone:
+#   the required checks are the gate. That includes Dependabot's Feature,
+#   action and stack-image bumps, which the frozen-lockfile build and the
+#   toolchain verification check, not a reviewer.
+#   A pull request that touches a listed path also needs its owner's approval.
+#   GitHub waives that on the owner's own pull requests.
+#
+# What is owned, and why:
+#   /.github/          the gate itself: this file, the rulesets, the workflows
+#                      that run the required checks, the Dependabot config
+#   /.repo/            the declarations, the waivers that silence this
+#                      repository's own findings, and the `repo` policies
+#   /.devcontainer/features/mise/
+#                      the local Feature that downloads and installs mise as
+#                      root in every repository built from this container
+#   /.devcontainer/scripts/
+#                      the lifecycle scripts every repository's container runs,
+#                      including the GitHub credential and npm registry setup
+#
+# Everything else is unowned on purpose. Pin and lock files
+# (.devcontainer/devcontainer.json's Features, devcontainer-lock.json,
+# .config/mise/, the stack compose files) stay unowned so bot pull requests
+# merge on green CI. Listing a path is a commitment to review every change to
+# it, so keep the list short.
+#
+# Syntax rules that bite:
+#   - NEVER add a `*` catch-all (COMM-09). It makes every pull request
+#     codeowned and brings back blanket review of the whole repository.
+#   - LAST matching pattern wins — order from broad to specific.
+#   - ALL owners for a pattern go on ONE line.
+#   - Owners need EXPLICIT write access to this repo, or the entry is silently
+#     ignored and the path becomes unowned. GitHub lists such lines at
+#     `gh api repos/musher-dev/development-container/codeowners/errors`.
+#   - A root-anchored path must exist (COMM-10): after a rename, the old line
+#     protects nothing.
+
+/.github/                         @musher-dev/engineering
+/.repo/                           @musher-dev/engineering
+/.devcontainer/features/mise/     @musher-dev/engineering
+/.devcontainer/scripts/           @musher-dev/engineering
